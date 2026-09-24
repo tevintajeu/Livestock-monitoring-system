@@ -1,0 +1,31 @@
+<resources>
+    <string name="app_name">Livestock Vet Monitor</string>
+    <string name="title_dashboard">Livestock Triage Dashboard</string>
+    <string name="title_node_detail">Livestock Biometrics &amp; Telemetry</string>
+
+    <!-- Gateway & Sync -->
+    <string name="gateway_status_connected">Connected to ESP32 Gateway AP</string>
+    <string name="gateway_status_disconnected">Offline / Local Mode</string>
+    <string name="btn_sync_now">Sync Gateway</string>
+    <string name="syncing_data">Syncing telemetry data from ESP32 gateway…</string>
+    <string name="sync_success">Synchronized %1$d telemetry records successfully</string>
+    <string name="sync_failed">Sync Failed: %1$s</string>
+    <string name="default_gateway_url">http://192.168.4.1/data</string>
+
+    <!-- Stats & Filters -->
+    <string name="total_nodes_label">Active Nodes</string>
+    <string name="anomaly_nodes_label">Anomalies</string>
+    <string name="normal_nodes_label">Healthy</string>
+
+    <!-- Biometrics & Badges -->
+    <string name="status_healthy_badge">HEALTHY</string>
+    <string name="status_anomaly_badge">ANOMALY DETECTED</string>
+    <string name="temp_unit">°C</string>
+    <string name="fever_alert">FEVER DETECTED (>39.5°C)</string>
+    <string name="motion_alert">HIGH ACCELERATION / DISTRESS</string>
+    <string name="normal_status_desc">Normal biometrics &amp; motion</string>
+
+    <!-- Empty States -->
+    <string name="empty_records_title">No Telemetry Synced Yet</string>
+    <string name="empty_records_desc">Connect your Android device to the ESP32 Gateway Wi-Fi AP (e.g. \"ESP32_LIVESTOCK_AP\") and tap \"Sync Gateway\" above.</string>
+</resources>

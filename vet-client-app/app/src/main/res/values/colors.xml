@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand / Primary Palette (Veterinary Clinical Theme) -->
+    <color name="primary_navy">#0F2942</color>
+    <color name="primary_dark">#081726</color>
+    <color name="primary_light">#1E3A5F</color>
+    <color name="accent_teal">#00A389</color>
+
+    <!-- Biometric Status Colors -->
+    <!-- Normal (Healthy: Green) -->
+    <color name="status_healthy">#00875A</color>
+    <color name="status_healthy_bg">#E3FCEF</color>
+    <color name="status_healthy_border">#ABF5D1</color>
+
+    <!-- Anomaly / Distress / Fever (Red Alert) -->
+    <color name="status_anomaly">#DE350B</color>
+    <color name="status_anomaly_bg">#FFEBE6</color>
+    <color name="status_anomaly_border">#FFBDAD</color>
+
+    <!-- Warning / Elevated (Orange Amber) -->
+    <color name="status_warning">#FF8B00</color>
+    <color name="status_warning_bg">#FFF0B3</color>
+
+    <!-- Surfaces & Neutrals -->
+    <color name="surface_background">#F4F6F8</color>
+    <color name="surface_card">#FFFFFF</color>
+    <color name="surface_divider">#E2E8F0</color>
+    <color name="text_primary">#172B4D</color>
+    <color name="text_secondary">#6B778C</color>
+    <color name="text_muted">#97A0AF</color>
+    
+    <color name="white">#FFFFFF</color>
+    <color name="black">#000000</color>
+</resources>

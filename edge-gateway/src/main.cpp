@@ -1,113 +1,159 @@
-/**
- * ============================================================================
- * LoRa-Based Low-Power Livestock Monitoring System - ESP32 Edge Gateway Firmware
- * ============================================================================
- * 
- * Hardware: ESP32 Dev Module + SX1276/SX1278 LoRa Transceiver + SPIFFS/LittleFS
- * Mode: Localized Wi-Fi Access Point (SoftAP) + Web Server + LoRa Concentrator
- * 
- * Network Credentials (SoftAP):
- *   SSID: "ESP32_LIVESTOCK_AP"
- *   Password: "" (Open, or "livestock1234")
- *   IP: 192.168.4.1
- *   Endpoint: http://192.168.4.1/data
- * 
- * CSV Payload Format:
- *   node_id, temp, acc_x, acc_y, acc_z, anomaly_flag
- *   Example: NODE_001, 39.5, 1.2, 0.5, 9.8, 1
- */
-
-#include <Arduino.h>
 #include <WiFi.h>
-#include <WebServer.h>
-#include <SPIFFS.h>
+#include <PubSubClient.h>
+#include <Wire.h>
+#include <Adafruit_GFX.h>
+#include <Adafruit_SSD1306.h>
+#include <SPI.h>
+#include <SD.h>
 
-// --- Configuration Constants ---
-const char* AP_SSID = "ESP32_LIVESTOCK_AP";
-const char* AP_PASS = "vetclient123"; // or NULL for open AP
-const IPAddress LOCAL_IP(192, 168, 4, 1);
-const IPAddress GATEWAY_IP(192, 168, 4, 1);
-const IPAddress SUBNET_MASK(255, 255, 255, 0);
+#define SCREEN_WIDTH 128
+#define SCREEN_HEIGHT 64
+Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-const char* TELEMETRY_FILE_PATH = "/telemetry_history.csv";
+#define LED_RED 32
+#define LED_AMBER 33
+#define ACK_BUTTON 27
+#define SD_CS 15
 
-WebServer server(80);
+const char* ssid = "Wokwi-GUEST";
+const char* password = "";
+const char* mqtt_server = "broker.hivemq.com";
 
-// Sample simulated telemetry buffer to ensure out-of-the-box readiness
-String sampleTelemetryBuffer = 
-    "node_id, temp, acc_x, acc_y, acc_z, anomaly_flag\n"
-    "NODE_001, 38.6, 0.12, 0.05, 9.81, 0\n"
-    "NODE_002, 39.9, 0.10, 0.08, 9.78, 1\n"
-    "NODE_003, 38.4, 0.04, 0.02, 9.80, 0\n"
-    "NODE_004, 38.7, 4.50, 3.20, 14.80, 1\n"
-    "NODE_005, 40.4, 0.15, 0.11, 9.82, 1\n"
-    "NODE_006, 38.2, 0.08, 0.05, 9.79, 0\n";
+WiFiClient espClient;
+PubSubClient client(espClient);
+SPIClass spiSD(HSPI);
 
-/**
- * HTTP GET Handler for /data endpoint.
- * Serves 30-day CSV telemetry buffer to connected Android Veterinary Client.
- */
-void handleDataRequest() {
-    Serial.println("[HTTP] Inbound GET /data request from Android client.");
+void callback(char* topic, byte* payload, unsigned int length) {
+  String incoming = "";
+  for (int i = 0; i < length; i++) {
+    incoming += (char)payload[i];
+  }
+  Serial.println("Received: " + incoming);
 
-    // Add CORS headers for testing flexibility
-    server.sendHeader("Access-Control-Allow-Origin", "*");
-    server.sendHeader("Cache-Control", "no-cache");
+  // Parse CSV
+int firstComma = incoming.indexOf(',');
+int secondComma = incoming.indexOf(',', firstComma + 1);
+int lastComma = incoming.lastIndexOf(',');
 
-    if (SPIFFS.exists(TELEMETRY_FILE_PATH)) {
-        File file = SPIFFS.open(TELEMETRY_FILE_PATH, FILE_READ);
-        if (file) {
-            server.streamFile(file, "text/csv");
-            file.close();
-            Serial.println("[HTTP] Streamed stored telemetry CSV file from SPIFFS.");
-            return;
-        }
-    }
+String nodeId = incoming.substring(0, firstComma);
+// Extract everything between the first and second comma
+float temp = incoming.substring(firstComma + 1, secondComma).toFloat(); 
+int anomalyFlag = incoming.substring(lastComma + 1).toInt();
+  
+  // Log to Local SD Card
+  File file = SD.open("/livestock.csv", FILE_APPEND);
+  if (file) {
+    file.println(incoming);
+    file.close();
+    Serial.println("Saved to SD File System");
+  }
 
-    // Fallback: Stream in-memory buffer if SPIFFS file is empty or formatting
-    server.send(200, "text/csv", sampleTelemetryBuffer);
-    Serial.println("[HTTP] Dispatched telemetry buffer to Android client.");
+  // Update OLED Display
+  display.clearDisplay();
+  display.setCursor(0, 0);
+  display.setTextSize(1);
+  display.setTextColor(SSD1306_WHITE);
+  display.println("FARM GATEWAY");
+  display.println("ID: " + nodeId);
+  display.println("Temp: " + String(temp) + " C");
+  
+  // Trigger Hardware Alerts
+digitalWrite(LED_RED, LOW);
+digitalWrite(LED_AMBER, LOW);
+if (anomalyFlag == 1) {
+  display.println("\nSTATUS: HEALTH/MOTION!");
+  if (temp > 39.5) {
+    digitalWrite(LED_AMBER, HIGH); // Sickness
+  } else {
+    digitalWrite(LED_RED, HIGH);   // Predator/Motion
+  }
+} else if (anomalyFlag == 2) {
+  display.println("\nSTATUS: STRAY ALERT!");
+  digitalWrite(LED_RED, HIGH);     // Straying
+} else {
+  display.println("\nSTATUS: Normal");
+}
+display.display();
 }
 
-/**
- * HTTP Root Welcome Page
- */
-void handleRoot() {
-    String html = "<html><body><h1>ESP32 Livestock Gateway</h1>"
-                  "<p>Telemetry Endpoint: <a href='/data'>/data</a></p></body></html>";
-    server.send(200, "text/html", html);
+void setup_wifi() {
+  Serial.print("Connecting to WiFi");
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nWiFi connected!");
+  Serial.println("Connecting to MQTT Broker...");
 }
 
 void setup() {
-    Serial.begin(115200);
-    delay(1000);
-    Serial.println("\n--- Initializing ESP32 Livestock Edge Gateway ---");
+  Serial.begin(115200);
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_AMBER, OUTPUT);
+  pinMode(ACK_BUTTON, INPUT_PULLUP);
+  
+  Wire.begin(21, 22);
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  display.clearDisplay();
+  display.display();
 
-    // Initialize SPIFFS
-    if (!SPIFFS.begin(true)) {
-        Serial.println("[WARN] SPIFFS mount failed. Using RAM buffer fallback.");
-    } else {
-        Serial.println("[OK] SPIFFS Flash storage mounted.");
-    }
+  spiSD.begin(14, 12, 13, SD_CS);
+  if (!SD.begin(SD_CS, spiSD)) {
+    Serial.println("SD Card mount failed!");
+  }
 
-    // Configure ESP32 SoftAP
-    WiFi.mode(WIFI_AP);
-    WiFi.softAPConfig(LOCAL_IP, GATEWAY_IP, SUBNET_MASK);
-    WiFi.softAP(AP_SSID, AP_PASS);
-
-    Serial.print("[OK] SoftAP Online. SSID: ");
-    Serial.println(AP_SSID);
-    Serial.print("[OK] Gateway IP Address: ");
-    Serial.println(WiFi.softAPIP());
-
-    // Register Web Server Endpoints
-    server.on("/", HTTP_GET, handleRoot);
-    server.on("/data", HTTP_GET, handleDataRequest);
-    server.begin();
-
-    Serial.println("[OK] HTTP Web Server listening on port 80.");
+  setup_wifi();
+  client.setServer(mqtt_server, 1883);
+  client.setKeepAlive(90); 
+  client.setCallback(callback);
 }
 
 void loop() {
-    server.handleClient();
+  static int lastButtonReading = HIGH;
+  static int buttonState = HIGH;
+  static unsigned long lastDebounceTime = 0;
+
+  if (!client.connected()) {
+    while (!client.connected()) {
+      if (client.connect("Gateway_TX_TNT99")) {
+        client.subscribe("capstone/livestock/telemetry");
+        break;
+      }
+      delay(100);
+    }
+  }
+  client.loop();
+
+  // Acknowledgment Button Logic
+  int buttonReading = digitalRead(ACK_BUTTON);
+  if (buttonReading != lastButtonReading) {
+    lastDebounceTime = millis();
+  }
+
+  if (millis() - lastDebounceTime > 50 && buttonReading != buttonState) {
+    buttonState = buttonReading;
+    if (buttonState == LOW) {
+      digitalWrite(LED_RED, LOW);
+      digitalWrite(LED_AMBER, LOW);
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.println("Alert Acknowledged");
+      display.display();
+
+      File readFile = SD.open("/livestock.csv");
+      if (readFile) {
+        Serial.println("\n--- SD CARD LOG DUMP ---");
+        while (readFile.available()) {
+          Serial.write(readFile.read());
+        }
+        Serial.println("------------------------\n");
+        readFile.close();
+      } else {
+        Serial.println("Error opening livestock.csv");
+      }
+    }
+  }
+
+  lastButtonReading = buttonReading;
 }

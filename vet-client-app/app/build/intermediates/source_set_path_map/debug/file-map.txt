@@ -1,0 +1,39 @@
+com.livestock.vetclient.app-customview-poolingcontainer-1.0.0-0 C:\Users\PC\.gradle\caches\9.3.0\transforms\00d3e8f1bee3a052e5f4c58616ce989c\workspace\transformed\customview-poolingcontainer-1.0.0\res
+com.livestock.vetclient.app-core-1.9.0-1 C:\Users\PC\.gradle\caches\9.3.0\transforms\02441a673ea52f2555ce4dddf1fe4f18\workspace\transformed\core-1.9.0\res
+com.livestock.vetclient.app-emoji2-views-helper-1.2.0-2 C:\Users\PC\.gradle\caches\9.3.0\transforms\0567772db5daf3fd1216250d2d673f4a\workspace\transformed\emoji2-views-helper-1.2.0\res
+com.livestock.vetclient.app-cardview-1.0.0-3 C:\Users\PC\.gradle\caches\9.3.0\transforms\0a3189380e1ca8787746e8e6776fa913\workspace\transformed\cardview-1.0.0\res
+com.livestock.vetclient.app-startup-runtime-1.1.1-4 C:\Users\PC\.gradle\caches\9.3.0\transforms\15a2c02600b2400d61511964064ae972\workspace\transformed\startup-runtime-1.1.1\res
+com.livestock.vetclient.app-viewpager2-1.1.0-beta02-5 C:\Users\PC\.gradle\caches\9.3.0\transforms\2373d4518f2c1d3320e6a73fa005f2e6\workspace\transformed\viewpager2-1.1.0-beta02\res
+com.livestock.vetclient.app-lifecycle-runtime-2.6.1-6 C:\Users\PC\.gradle\caches\9.3.0\transforms\2e2ea589c5588c455adbaebe8570764d\workspace\transformed\lifecycle-runtime-2.6.1\res
+com.livestock.vetclient.app-recyclerview-1.3.2-7 C:\Users\PC\.gradle\caches\9.3.0\transforms\2ef5ae329d91f3f8d6b59f046e857979\workspace\transformed\recyclerview-1.3.2\res
+com.livestock.vetclient.app-appcompat-resources-1.6.1-8 C:\Users\PC\.gradle\caches\9.3.0\transforms\307f181f23d96fa021169fb30ec50664\workspace\transformed\appcompat-resources-1.6.1\res
+com.livestock.vetclient.app-lifecycle-viewmodel-savedstate-2.6.1-9 C:\Users\PC\.gradle\caches\9.3.0\transforms\3385a8b5727f24a9cd2b147e155556ee\workspace\transformed\lifecycle-viewmodel-savedstate-2.6.1\res
+com.livestock.vetclient.app-sqlite-framework-2.4.0-10 C:\Users\PC\.gradle\caches\9.3.0\transforms\39db6aa6e70252cdaebd0a3e907e1700\workspace\transformed\sqlite-framework-2.4.0\res
+com.livestock.vetclient.app-drawerlayout-1.1.1-11 C:\Users\PC\.gradle\caches\9.3.0\transforms\40c7a0fd53f7d4e6d37126ccd6d626c3\workspace\transformed\drawerlayout-1.1.1\res
+com.livestock.vetclient.app-emoji2-1.2.0-12 C:\Users\PC\.gradle\caches\9.3.0\transforms\4ac79b9397f733ef5bc3779297a311b4\workspace\transformed\emoji2-1.2.0\res
+com.livestock.vetclient.app-activity-1.8.0-13 C:\Users\PC\.gradle\caches\9.3.0\transforms\5476ded65700215df98803685b3766ed\workspace\transformed\activity-1.8.0\res
+com.livestock.vetclient.app-lifecycle-process-2.6.1-14 C:\Users\PC\.gradle\caches\9.3.0\transforms\604139ed62e2fa31535d5bfec368aec9\workspace\transformed\lifecycle-process-2.6.1\res
+com.livestock.vetclient.app-sqlite-2.4.0-15 C:\Users\PC\.gradle\caches\9.3.0\transforms\620b6d35ff224c428332812ad5e668bd\workspace\transformed\sqlite-2.4.0\res
+com.livestock.vetclient.app-constraintlayout-2.1.4-16 C:\Users\PC\.gradle\caches\9.3.0\transforms\69a936495feeee57b2c0f220eedb2bc2\workspace\transformed\constraintlayout-2.1.4\res
+com.livestock.vetclient.app-transition-1.2.0-17 C:\Users\PC\.gradle\caches\9.3.0\transforms\6a38bf3574a6b2cb71ece9f4fbde7d8d\workspace\transformed\transition-1.2.0\res
+com.livestock.vetclient.app-annotation-experimental-1.3.0-18 C:\Users\PC\.gradle\caches\9.3.0\transforms\720cf68eb10a7373d7d56f8fac888028\workspace\transformed\annotation-experimental-1.3.0\res
+com.livestock.vetclient.app-coordinatorlayout-1.1.0-19 C:\Users\PC\.gradle\caches\9.3.0\transforms\7323a3f2e3be325a19412b9e4d03e2f2\workspace\transformed\coordinatorlayout-1.1.0\res
+com.livestock.vetclient.app-lifecycle-livedata-core-2.6.1-20 C:\Users\PC\.gradle\caches\9.3.0\transforms\7598c7264800d9bbe61c84b6c76b3f37\workspace\transformed\lifecycle-livedata-core-2.6.1\res
+com.livestock.vetclient.app-material-1.11.0-21 C:\Users\PC\.gradle\caches\9.3.0\transforms\7c4d6fba944c1a1451347eaed1469332\workspace\transformed\material-1.11.0\res
+com.livestock.vetclient.app-appcompat-1.6.1-22 C:\Users\PC\.gradle\caches\9.3.0\transforms\897c2a2eba60ac3edf5c2a722fdbf1a3\workspace\transformed\appcompat-1.6.1\res
+com.livestock.vetclient.app-profileinstaller-1.3.0-23 C:\Users\PC\.gradle\caches\9.3.0\transforms\92dc9070c0299f6119d8e6a3f278dcb4\workspace\transformed\profileinstaller-1.3.0\res
+com.livestock.vetclient.app-lifecycle-livedata-2.6.1-24 C:\Users\PC\.gradle\caches\9.3.0\transforms\96930a9407ebea323132527f7e4869df\workspace\transformed\lifecycle-livedata-2.6.1\res
+com.livestock.vetclient.app-core-runtime-2.2.0-25 C:\Users\PC\.gradle\caches\9.3.0\transforms\a13999d50d998299ea91d01ac488a1db\workspace\transformed\core-runtime-2.2.0\res
+com.livestock.vetclient.app-savedstate-1.2.1-26 C:\Users\PC\.gradle\caches\9.3.0\transforms\a170944f6cad49af9ff967535179c412\workspace\transformed\savedstate-1.2.1\res
+com.livestock.vetclient.app-core-ktx-1.9.0-27 C:\Users\PC\.gradle\caches\9.3.0\transforms\ab11a949711fe80654568e44d0ba873a\workspace\transformed\core-ktx-1.9.0\res
+com.livestock.vetclient.app-swiperefreshlayout-1.1.0-28 C:\Users\PC\.gradle\caches\9.3.0\transforms\c807ad15e9eaeb7bd7de0c18f8b411b5\workspace\transformed\swiperefreshlayout-1.1.0\res
+com.livestock.vetclient.app-room-runtime-2.6.1-29 C:\Users\PC\.gradle\caches\9.3.0\transforms\ce07430ac2b9fd98e7ba278957bdd681\workspace\transformed\room-runtime-2.6.1\res
+com.livestock.vetclient.app-fragment-1.3.6-30 C:\Users\PC\.gradle\caches\9.3.0\transforms\d0509b2b1798d670f20ca66f179ac3ea\workspace\transformed\fragment-1.3.6\res
+com.livestock.vetclient.app-lifecycle-viewmodel-2.6.1-31 C:\Users\PC\.gradle\caches\9.3.0\transforms\e3b7336c141d97cb23a309c5a8369ca0\workspace\transformed\lifecycle-viewmodel-2.6.1\res
+com.livestock.vetclient.app-pngs-32 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\build\generated\res\pngs\debug
+com.livestock.vetclient.app-resValues-33 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\build\generated\res\resValues\debug
+com.livestock.vetclient.app-packageDebugResources-34 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\build\intermediates\incremental\debug\packageDebugResources\merged.dir
+com.livestock.vetclient.app-packageDebugResources-35 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\build\intermediates\incremental\debug\packageDebugResources\stripped.dir
+com.livestock.vetclient.app-merged_res-36 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\build\intermediates\merged_res\debug
+com.livestock.vetclient.app-debug-37 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\src\debug\res
+com.livestock.vetclient.app-main-38 E:\OneDriveStrathmoreUniversity\4.1\ICS project II\Livestock-monitoring-system\vet-client-app\app\src\main\res

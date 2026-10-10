@@ -1,0 +1,39 @@
+{
+  "version": 1,
+  "author": "Tevin Tajeu",
+  "editor": "wokwi",
+  "parts": [
+    { "type": "board-esp32-devkit-c-v4", "id": "esp", "top": 0, "left": 0, "attrs": {} },
+    {
+      "type": "wokwi-ds18b20",
+      "id": "temp1",
+      "top": 171.67,
+      "left": -149.52,
+      "attrs": { "temperature": "50.2" }
+    },
+    { "type": "wokwi-mpu6050", "id": "imu1", "top": 3.82, "left": -180.08, "attrs": {} },
+    {
+      "type": "wokwi-slide-potentiometer",
+      "id": "pot1",
+      "top": 283.4,
+      "left": -68.2,
+      "attrs": { "travelLength": "30" }
+    }
+  ],
+  "connections": [
+    [ "esp:TX", "$serialMonitor:RX", "", [] ],
+    [ "esp:RX", "$serialMonitor:TX", "", [] ],
+    [ "temp1:GND", "esp:CMD", "black", [ "v38.4", "h76.8", "v-67.2" ] ],
+    [ "temp1:VCC", "esp:3V3", "red", [ "v9.6", "h19.2", "v-134.4", "h38.4", "v-67.2" ] ],
+    [ "esp:4", "temp1:DQ", "green", [ "h24.04", "v96", "h-259.2" ] ],
+    [ "imu1:GND", "esp:GND.2", "black", [ "v-48", "h249.68", "v57.6", "h-33.64" ] ],
+    [ "imu1:VCC", "esp:3V3", "red", [ "v-19.2", "h0.08" ] ],
+    [ "imu1:SDA", "esp:21", "green", [ "v-76.8", "h316.88", "v144" ] ],
+    [ "esp:22", "imu1:SCL", "green", [ "h91.24", "v-134.4", "h-316.8" ] ],
+    [ "esp:33", "imu1:INT", "green", [ "h-225.41", "v-115.2", "h48" ] ],
+    [ "pot1:GND", "esp:GND.2", "black", [ "v0", "h43.6", "v-297.6" ] ],
+    [ "pot1:VCC", "esp:3V3", "red", [ "h0", "v-38.4", "h48", "v-278.4", "h28.8" ] ],
+    [ "esp:34", "pot1:SIG", "green", [ "h-52.61", "v211.2", "h-57.6", "v9.6" ] ]
+  ],
+  "dependencies": {}
+}

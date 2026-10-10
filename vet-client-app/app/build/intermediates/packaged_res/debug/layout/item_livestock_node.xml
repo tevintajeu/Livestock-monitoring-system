@@ -1,0 +1,197 @@
+<?xml version="1.0" encoding="utf-8"?>
+<com.google.android.material.card.MaterialCardView
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:id="@+id/card_node"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="10dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="2dp"
+    app:strokeWidth="1dp"
+    app:strokeColor="@color/surface_divider"
+    android:clickable="true"
+    android:focusable="true"
+    android:foreground="?attr/selectableItemBackground">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <!-- Top Status Accent Bar (Red if Anomaly = 1, Green if Anomaly = 0) -->
+        <View
+            android:id="@+id/view_status_accent_bar"
+            android:layout_width="match_parent"
+            android:layout_height="4dp"
+            android:background="@color/status_healthy" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Header Row: Node ID + Status Badge -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <TextView
+                    android:id="@+id/tv_node_id"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_primary"
+                    android:textSize="17sp"
+                    android:textStyle="bold"
+                    tools:text="NODE_001" />
+
+                <!-- Clinical Status Pill -->
+                <TextView
+                    android:id="@+id/tv_status_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="10dp"
+                    android:paddingTop="4dp"
+                    android:paddingEnd="10dp"
+                    android:paddingBottom="4dp"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/badge_healthy"
+                    android:textColor="@color/status_healthy"
+                    tools:text="HEALTHY" />
+            </LinearLayout>
+
+            <!-- Diagnostic Summary Text (e.g. Fever Detected / Motion Alert / Normal) -->
+            <TextView
+                android:id="@+id/tv_diagnostic_summary"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="4dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/status_healthy"
+                tools:text="Normal vital parameters" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:layout_marginTop="10dp"
+                android:layout_marginBottom="10dp"
+                android:background="@color/surface_divider" />
+
+            <!-- Biometrics Grid: Temperature & 3-Axis Motion -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical">
+
+                <!-- Temperature Reading -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/img_temp_icon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_thermometer"
+                        app:tint="@color/status_healthy"
+                        android:contentDescription="Temperature" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Body Temp"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_node_temperature"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold"
+                            tools:text="38.7 °C" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Acceleration Magnitude -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/img_motion_icon"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_motion"
+                        app:tint="@color/primary_navy"
+                        android:contentDescription="Acceleration" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="6dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Motion Vector |a|"
+                            android:textColor="@color/text_muted"
+                            android:textSize="10sp" />
+
+                        <TextView
+                            android:id="@+id/tv_node_acc_mag"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            tools:text="9.88 m/s²" />
+                    </LinearLayout>
+                </LinearLayout>
+
+                <!-- Chevron Indicator for Details -->
+                <ImageView
+                    android:layout_width="22dp"
+                    android:layout_height="22dp"
+                    android:src="@drawable/ic_chevron_right"
+                    app:tint="@color/text_muted"
+                    android:contentDescription="View Details" />
+
+            </LinearLayout>
+
+            <!-- Bottom Row: Last Sync Timestamp -->
+            <TextView
+                android:id="@+id/tv_node_timestamp"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="8dp"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                tools:text="Last Synced: 2026-09-24 09:20:15" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+</com.google.android.material.card.MaterialCardView>

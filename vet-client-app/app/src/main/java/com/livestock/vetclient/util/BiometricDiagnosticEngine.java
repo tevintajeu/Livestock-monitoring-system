@@ -7,7 +7,8 @@ import java.util.Locale;
 
 /**
  * Diagnostic analysis utility designed for veterinary triage.
- * Evaluates physiological temperature thresholds and 3-axis accelerometer patterns.
+ * Evaluates physiological temperature thresholds, 3-axis accelerometer patterns,
+ * and geofence boundary distance.
  */
 public class BiometricDiagnosticEngine {
 
@@ -20,14 +21,17 @@ public class BiometricDiagnosticEngine {
         public double maxTemp;
         public double avgTemp;
         public double maxAccMagnitude;
+        public double currentDistance;
+        public double maxDistance;
         public int totalReadings;
         public int anomalyCount;
         public boolean hasActiveFever;
         public boolean hasActiveMotionAlert;
+        public boolean hasActiveStrayAlert;
     }
 
     /**
-     * Computes biometric summary statistics for a given node's historical records.
+     * Computes biometric and geofencing summary statistics for a given node's historical records.
      */
     public static NodeSummaryStats computeStats(List<TelemetryRecord> records) {
         NodeSummaryStats stats = new NodeSummaryStats();
@@ -37,14 +41,17 @@ public class BiometricDiagnosticEngine {
 
         TelemetryRecord latest = records.get(0);
         stats.currentTemp = latest.getTemperature();
+        stats.currentDistance = latest.getDistance();
         stats.hasActiveFever = latest.isFever();
         stats.hasActiveMotionAlert = latest.isMotionAnomaly();
+        stats.hasActiveStrayAlert = latest.isStray();
         stats.totalReadings = records.size();
 
         double sumTemp = 0;
         double minT = Double.MAX_VALUE;
         double maxT = Double.MIN_VALUE;
         double maxAcc = 0;
+        double maxDist = 0;
         int anomalies = 0;
 
         for (TelemetryRecord r : records) {
@@ -56,13 +63,19 @@ public class BiometricDiagnosticEngine {
             double accMag = r.getAccelerationMagnitude();
             if (accMag > maxAcc) maxAcc = accMag;
 
-            if (r.getAnomalyFlag() == 1) anomalies++;
+            double dist = r.getDistance();
+            if (dist > maxDist) maxDist = dist;
+
+            if (r.getAnomalyFlag() > 0 || r.isStray()) {
+                anomalies++;
+            }
         }
 
         stats.minTemp = minT;
         stats.maxTemp = maxT;
         stats.avgTemp = sumTemp / records.size();
         stats.maxAccMagnitude = maxAcc;
+        stats.maxDistance = maxDist;
         stats.anomalyCount = anomalies;
 
         return stats;
@@ -77,6 +90,14 @@ public class BiometricDiagnosticEngine {
         }
 
         StringBuilder advice = new StringBuilder();
+
+        if (latestRecord.isStray() || latestRecord.getAnomalyFlag() == 2) {
+            advice.append("🚨 GEOFENCE BREACH / STRAY ALERT:\n")
+                  .append("• Recorded distance is ").append(String.format(Locale.US, "%.0f meters", latestRecord.getDistance()))
+                  .append(" from anchor gateway (Perimeter threshold: 500m).\n")
+                  .append("• High risk of livestock theft, predator exposure, or separation from the herd.\n")
+                  .append("• Recommendation: Dispatch herder/ranger team immediately along outer pasture boundary.\n\n");
+        }
 
         if (latestRecord.isFever()) {
             advice.append("⚠️ CLINICAL FEVER (> 39.5°C):\n")
@@ -93,11 +114,13 @@ public class BiometricDiagnosticEngine {
                   .append("• Recommendation: Dispatch field ranger/handler to node GPS vicinity to check for physical injury, wire entanglement, or predator presence.\n\n");
         }
 
-        if (latestRecord.getAnomalyFlag() == 0) {
+        if (latestRecord.getAnomalyFlag() == 0 && !latestRecord.isStray()) {
             advice.append("✅ NORMAL VITAL PARAMETERS:\n")
                   .append("• Core temperature (").append(String.format(Locale.US, "%.1f°C", latestRecord.getTemperature()))
-                  .append(") and acceleration vectors (")
+                  .append("), acceleration vectors (")
                   .append(String.format(Locale.US, "%.2f m/s²", latestRecord.getAccelerationMagnitude()))
+                  .append("), and pasture boundary distance (")
+                  .append(String.format(Locale.US, "%.0fm", latestRecord.getDistance()))
                   .append(") reflect resting/grazing baseline.\n")
                   .append("• No immediate clinical intervention required.");
         }

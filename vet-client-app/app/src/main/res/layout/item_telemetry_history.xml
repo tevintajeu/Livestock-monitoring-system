@@ -59,20 +59,30 @@
                 android:id="@+id/history_tv_temp"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:textSize="14sp"
+                android:textSize="13sp"
                 android:textStyle="bold"
                 android:textColor="@color/status_healthy"
                 tools:text="38.8 °C" />
+
+            <TextView
+                android:id="@+id/history_tv_distance"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="8dp"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:textColor="@color/text_primary"
+                tools:text="Dist: 340m" />
 
             <TextView
                 android:id="@+id/history_tv_acc_details"
                 android:layout_width="0dp"
                 android:layout_height="wrap_content"
                 android:layout_weight="1"
-                android:layout_marginStart="12dp"
+                android:layout_marginStart="8dp"
                 android:textSize="12sp"
                 android:textColor="@color/text_secondary"
-                tools:text="Acc: X: 1.20, Y: 0.50, Z: 9.80 (|a| = 9.88)" />
+                tools:text="|a| = 9.88 m/s²" />
 
         </LinearLayout>
 

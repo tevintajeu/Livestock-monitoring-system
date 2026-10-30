@@ -15,7 +15,7 @@ import java.util.concurrent.Executors;
  * Main Room Database for the Veterinary Client Application.
  * Manages local persistent storage of livestock biometrics and motion telemetry.
  */
-@Database(entities = {TelemetryRecord.class}, version = 1, exportSchema = false)
+@Database(entities = {TelemetryRecord.class}, version = 2, exportSchema = false)
 public abstract class AppDatabase extends RoomDatabase {
 
     private static final String DATABASE_NAME = "livestock_telemetry_db";

@@ -21,7 +21,10 @@ import java.util.Locale;
 
 /**
  * RecyclerView Adapter displaying the triage cards for monitored livestock nodes.
- * Visual status is dynamically color-coded: Red for Anomaly = 1, Green for Anomaly = 0.
+ * Visual status is dynamically color-coded:
+ * - Red for Anomaly = 1 (Fever or High-Motion / Predator)
+ * - Amber/Red for Anomaly = 2 or Distance > 500m (Stray / Geofence Breach)
+ * - Green for Healthy / Baseline vitals
  */
 public class LivestockNodeAdapter extends RecyclerView.Adapter<LivestockNodeAdapter.NodeViewHolder> {
 
@@ -72,6 +75,8 @@ public class LivestockNodeAdapter extends RecyclerView.Adapter<LivestockNodeAdap
         private final TextView tvTemperature;
         private final ImageView imgTempIcon;
         private final TextView tvAccMagnitude;
+        private final TextView tvDistance;
+        private final ImageView imgDistanceIcon;
         private final TextView tvTimestamp;
 
         public NodeViewHolder(@NonNull View itemView) {
@@ -83,6 +88,8 @@ public class LivestockNodeAdapter extends RecyclerView.Adapter<LivestockNodeAdap
             tvTemperature = itemView.findViewById(R.id.tv_node_temperature);
             imgTempIcon = itemView.findViewById(R.id.img_temp_icon);
             tvAccMagnitude = itemView.findViewById(R.id.tv_node_acc_mag);
+            tvDistance = itemView.findViewById(R.id.tv_node_distance);
+            imgDistanceIcon = itemView.findViewById(R.id.img_distance_icon);
             tvTimestamp = itemView.findViewById(R.id.tv_node_timestamp);
         }
 
@@ -99,14 +106,35 @@ public class LivestockNodeAdapter extends RecyclerView.Adapter<LivestockNodeAdap
             double magnitude = record.getAccelerationMagnitude();
             tvAccMagnitude.setText(String.format(Locale.US, "%.2f m/s²", magnitude));
 
+            // Bind Geofence Distance
+            tvDistance.setText(String.format(Locale.US, "%.0f m", record.getDistance()));
+
             // Bind Timestamp
             tvTimestamp.setText("Last Synced: " + record.getFormattedDateTime());
 
-            // Triage Evaluation: Anomaly Flag = 1 (Red Alert) vs 0 (Green Healthy)
-            boolean isAnomaly = (record.getAnomalyFlag() == 1);
+            // Triage Evaluation: Anomaly Flags
             boolean isFever = record.isFever();
+            boolean isStray = record.isStray() || record.getAnomalyFlag() == 2;
+            boolean isAnomaly = (record.getAnomalyFlag() == 1 || isStray);
 
-            if (isAnomaly) {
+            if (isStray) {
+                // Color Code: AMBER / RED GEOFENCE BREACH
+                int warningColor = ContextCompat.getColor(ctx, R.color.status_warning);
+                int anomalyColor = ContextCompat.getColor(ctx, R.color.status_anomaly);
+                int accentColor = (record.getDistance() > 700.0) ? anomalyColor : warningColor;
+
+                viewStatusAccent.setBackgroundColor(accentColor);
+                tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
+                tvStatusBadge.setTextColor(accentColor);
+                tvStatusBadge.setText("STRAY ALERT");
+
+                tvDiagnosticSummary.setTextColor(accentColor);
+                tvDiagnosticSummary.setText("Geofence Breach (" + String.format(Locale.US, "%.0fm", record.getDistance()) + " > 500m)");
+
+                tvDistance.setTextColor(accentColor);
+                imgDistanceIcon.setImageTintList(ColorStateList.valueOf(accentColor));
+
+            } else if (record.getAnomalyFlag() == 1) {
                 // Color Code: RED ALERT
                 int redColor = ContextCompat.getColor(ctx, R.color.status_anomaly);
                 viewStatusAccent.setBackgroundColor(redColor);
@@ -125,6 +153,9 @@ public class LivestockNodeAdapter extends RecyclerView.Adapter<LivestockNodeAdap
                     tvDiagnosticSummary.setText("High Acceleration Spike (Predator/Trauma)");
                 }
 
+                tvDistance.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
+                imgDistanceIcon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.primary_navy)));
+
             } else {
                 // Color Code: GREEN HEALTHY
                 int greenColor = ContextCompat.getColor(ctx, R.color.status_healthy);
@@ -134,6 +165,9 @@ public class LivestockNodeAdapter extends RecyclerView.Adapter<LivestockNodeAdap
                 tvStatusBadge.setText(R.string.status_healthy_badge);
                 tvDiagnosticSummary.setTextColor(greenColor);
                 tvDiagnosticSummary.setText(R.string.normal_status_desc);
+
+                tvDistance.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
+                imgDistanceIcon.setImageTintList(ColorStateList.valueOf(ContextCompat.getColor(ctx, R.color.primary_navy)));
             }
 
             // Highlight fever on temperature widget

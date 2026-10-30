@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Center group offset for adaptive icon safe zone -->
+    <group
+        android:translateX="18"
+        android:translateY="18"
+        android:scaleX="0.666"
+        android:scaleY="0.666">
+
+        <!-- Outer Shield / Clinical Emblem -->
+        <path
+            android:fillColor="#1E3A5F"
+            android:strokeColor="#00A389"
+            android:strokeWidth="3"
+            android:pathData="M54,14 L88,28 L88,58 C88,78 72,94 54,100 C36,94 20,78 20,58 L20,28 Z" />
+
+        <!-- Medical Veterinary Cross -->
+        <path
+            android:fillColor="#00A389"
+            android:pathData="M46,36 h16 v12 h12 v16 h-12 v16 h-16 v-16 h-12 v-16 h12 z" />
+
+        <!-- Heartbeat / Telemetry Pulse Line (White) -->
+        <path
+            android:fillColor="#00000000"
+            android:strokeColor="#FFFFFF"
+            android:strokeWidth="3.5"
+            android:strokeLineCap="round"
+            android:strokeLineJoin="round"
+            android:pathData="M30,54 L44,54 L49,42 L55,66 L60,50 L64,54 L78,54" />
+    </group>
+</vector>

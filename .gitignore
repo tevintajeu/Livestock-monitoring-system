@@ -1,0 +1,13 @@
+.gradle/ 
+build/ 
+*/build/ 
+*/*/build/ 
+*.apk 
+*.aab 
+local.properties 
+.idea/ 
+*.iml 
+.pio/ 
+.vscode/ 
+__pycache__/ 
+*.pyc

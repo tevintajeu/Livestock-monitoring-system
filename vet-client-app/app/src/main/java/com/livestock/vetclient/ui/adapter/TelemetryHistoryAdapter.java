@@ -56,6 +56,7 @@ public class TelemetryHistoryAdapter extends RecyclerView.Adapter<TelemetryHisto
         private final TextView tvTimestamp;
         private final TextView tvStatusBadge;
         private final TextView tvTemp;
+        private final TextView tvDistance;
         private final TextView tvAccDetails;
 
         public HistoryViewHolder(@NonNull View itemView) {
@@ -63,6 +64,7 @@ public class TelemetryHistoryAdapter extends RecyclerView.Adapter<TelemetryHisto
             tvTimestamp = itemView.findViewById(R.id.history_tv_timestamp);
             tvStatusBadge = itemView.findViewById(R.id.history_tv_status_badge);
             tvTemp = itemView.findViewById(R.id.history_tv_temp);
+            tvDistance = itemView.findViewById(R.id.history_tv_distance);
             tvAccDetails = itemView.findViewById(R.id.history_tv_acc_details);
         }
 
@@ -71,26 +73,32 @@ public class TelemetryHistoryAdapter extends RecyclerView.Adapter<TelemetryHisto
 
             tvTimestamp.setText(record.getFormattedDateTime());
             tvTemp.setText(String.format(Locale.US, "%.1f °C", record.getTemperature()));
+            tvDistance.setText(String.format(Locale.US, "Dist: %.0fm", record.getDistance()));
 
             tvAccDetails.setText(String.format(
                     Locale.US,
-                    "X: %.2f, Y: %.2f, Z: %.2f (|a| = %.2f)",
-                    record.getAccX(),
-                    record.getAccY(),
-                    record.getAccZ(),
+                    "|a| = %.2f m/s²",
                     record.getAccelerationMagnitude()
             ));
 
-            if (record.getAnomalyFlag() == 1) {
+            if (record.isStray() || record.getAnomalyFlag() == 2) {
+                int warningColor = ContextCompat.getColor(ctx, R.color.status_warning);
+                tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
+                tvStatusBadge.setTextColor(warningColor);
+                tvStatusBadge.setText("STRAY");
+                tvDistance.setTextColor(warningColor);
+            } else if (record.getAnomalyFlag() == 1) {
                 int redColor = ContextCompat.getColor(ctx, R.color.status_anomaly);
                 tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
                 tvStatusBadge.setTextColor(redColor);
                 tvStatusBadge.setText("ANOMALY");
+                tvDistance.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
             } else {
                 int greenColor = ContextCompat.getColor(ctx, R.color.status_healthy);
                 tvStatusBadge.setBackgroundResource(R.drawable.badge_healthy);
                 tvStatusBadge.setTextColor(greenColor);
                 tvStatusBadge.setText("NORMAL");
+                tvDistance.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
             }
 
             if (record.isFever()) {

@@ -23,7 +23,7 @@ import java.util.Locale;
 
 /**
  * Diagnostic Detail Controller for a specific monitored livestock node.
- * Displays real-time clinical assessment, biometric indicators, and historical readings.
+ * Displays real-time clinical assessment, biometric indicators, geofence distance, and historical readings.
  */
 public class NodeDetailActivity extends AppCompatActivity {
 
@@ -40,6 +40,8 @@ public class NodeDetailActivity extends AppCompatActivity {
     private TextView tvTempAlert;
     private TextView tvAccMagnitude;
     private TextView tvAccVector;
+    private TextView tvDistance;
+    private TextView tvDistanceAlert;
 
     // Diagnostic Advice & History
     private TextView tvClinicalAdvice;
@@ -81,6 +83,9 @@ public class NodeDetailActivity extends AppCompatActivity {
         tvTempAlert = findViewById(R.id.detail_tv_temp_alert);
         tvAccMagnitude = findViewById(R.id.detail_tv_acc_mag);
         tvAccVector = findViewById(R.id.detail_tv_acc_vector);
+
+        tvDistance = findViewById(R.id.detail_tv_distance);
+        tvDistanceAlert = findViewById(R.id.detail_tv_distance_alert);
 
         tvClinicalAdvice = findViewById(R.id.detail_tv_clinical_advice);
         tvHistoryCount = findViewById(R.id.detail_tv_history_count);
@@ -136,6 +141,18 @@ public class NodeDetailActivity extends AppCompatActivity {
                     stats.maxAccMagnitude
             ));
 
+            // Bind Geofence Distance
+            tvDistance.setText(String.format(Locale.US, "%.0f m", latest.getDistance()));
+            if (latest.isStray() || latest.getAnomalyFlag() == 2) {
+                tvDistance.setTextColor(ContextCompat.getColor(this, R.color.status_anomaly));
+                tvDistanceAlert.setText("⚠️ GEOFENCE BREACH: Straying outside 500m perimeter!");
+                tvDistanceAlert.setTextColor(ContextCompat.getColor(this, R.color.status_anomaly));
+            } else {
+                tvDistance.setTextColor(ContextCompat.getColor(this, R.color.text_primary));
+                tvDistanceAlert.setText("Within safe pasture boundary (Peak dist: " + String.format(Locale.US, "%.0fm", stats.maxDistance) + ")");
+                tvDistanceAlert.setTextColor(ContextCompat.getColor(this, R.color.status_healthy));
+            }
+
             // Bind Clinical Diagnostic Advice
             String advice = BiometricDiagnosticEngine.generateClinicalAdvice(latest, stats);
             tvClinicalAdvice.setText(advice);
@@ -147,7 +164,16 @@ public class NodeDetailActivity extends AppCompatActivity {
     }
 
     private void bindStatusBadge(TelemetryRecord record) {
-        if (record.getAnomalyFlag() == 1) {
+        if (record.isStray() || record.getAnomalyFlag() == 2) {
+            int warningColor = ContextCompat.getColor(this, R.color.status_warning);
+            int anomalyColor = ContextCompat.getColor(this, R.color.status_anomaly);
+            int accentColor = (record.getDistance() > 700.0) ? anomalyColor : warningColor;
+
+            tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
+            tvStatusBadge.setTextColor(accentColor);
+            tvStatusBadge.setText("STRAY ALERT");
+
+        } else if (record.getAnomalyFlag() == 1) {
             int redColor = ContextCompat.getColor(this, R.color.status_anomaly);
             tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
             tvStatusBadge.setTextColor(redColor);

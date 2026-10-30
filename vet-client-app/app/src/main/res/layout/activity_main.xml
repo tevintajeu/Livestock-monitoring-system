@@ -36,6 +36,7 @@
 
             <!-- AP Connection Status Row -->
             <LinearLayout
+                android:id="@+id/layout_gateway_config"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
@@ -58,7 +59,9 @@
                     android:layout_marginStart="8dp"
                     android:text="Target: http://192.168.4.1/data"
                     android:textColor="@color/white"
-                    android:textSize="12sp" />
+                    android:textSize="12sp"
+                    android:clickable="true"
+                    android:focusable="true" />
 
                 <!-- Sync Now Button -->
                 <com.google.android.material.button.MaterialButton

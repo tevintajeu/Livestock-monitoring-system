@@ -84,7 +84,7 @@
                 android:layout_marginBottom="10dp"
                 android:background="@color/surface_divider" />
 
-            <!-- Biometrics Grid: Temperature & 3-Axis Motion -->
+            <!-- Biometrics Grid: Temperature, 3-Axis Motion & Geofence Distance -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -101,8 +101,8 @@
 
                     <ImageView
                         android:id="@+id/img_temp_icon"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
                         android:src="@drawable/ic_thermometer"
                         app:tint="@color/status_healthy"
                         android:contentDescription="Temperature" />
@@ -111,21 +111,21 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginStart="6dp">
+                        android:layout_marginStart="4dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:text="Body Temp"
                             android:textColor="@color/text_muted"
-                            android:textSize="10sp" />
+                            android:textSize="9sp" />
 
                         <TextView
                             android:id="@+id/tv_node_temperature"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/text_primary"
-                            android:textSize="15sp"
+                            android:textSize="13sp"
                             android:textStyle="bold"
                             tools:text="38.7 °C" />
                     </LinearLayout>
@@ -141,8 +141,8 @@
 
                     <ImageView
                         android:id="@+id/img_motion_icon"
-                        android:layout_width="20dp"
-                        android:layout_height="20dp"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
                         android:src="@drawable/ic_motion"
                         app:tint="@color/primary_navy"
                         android:contentDescription="Acceleration" />
@@ -151,30 +151,70 @@
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:orientation="vertical"
-                        android:layout_marginStart="6dp">
+                        android:layout_marginStart="4dp">
 
                         <TextView
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Motion Vector |a|"
+                            android:text="Motion |a|"
                             android:textColor="@color/text_muted"
-                            android:textSize="10sp" />
+                            android:textSize="9sp" />
 
                         <TextView
                             android:id="@+id/tv_node_acc_mag"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:textColor="@color/text_primary"
-                            android:textSize="14sp"
+                            android:textSize="13sp"
                             android:textStyle="bold"
                             tools:text="9.88 m/s²" />
                     </LinearLayout>
                 </LinearLayout>
 
+                <!-- Geofence Distance -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/img_distance_icon"
+                        android:layout_width="18dp"
+                        android:layout_height="18dp"
+                        android:src="@drawable/ic_distance"
+                        app:tint="@color/primary_navy"
+                        android:contentDescription="Distance" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginStart="4dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Distance"
+                            android:textColor="@color/text_muted"
+                            android:textSize="9sp" />
+
+                        <TextView
+                            android:id="@+id/tv_node_distance"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:textColor="@color/text_primary"
+                            android:textSize="13sp"
+                            android:textStyle="bold"
+                            tools:text="320 m" />
+                    </LinearLayout>
+                </LinearLayout>
+
                 <!-- Chevron Indicator for Details -->
                 <ImageView
-                    android:layout_width="22dp"
-                    android:layout_height="22dp"
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
                     android:src="@drawable/ic_chevron_right"
                     app:tint="@color/text_muted"
                     android:contentDescription="View Details" />

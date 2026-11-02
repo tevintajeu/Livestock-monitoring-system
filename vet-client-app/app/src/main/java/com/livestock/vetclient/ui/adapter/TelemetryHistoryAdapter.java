@@ -19,10 +19,17 @@ import java.util.Locale;
 
 /**
  * Adapter for rendering chronological telemetry logs in the NodeDetailActivity.
+ * Adapts labels to active role (Plain-Language for Farmer vs Technical for Vet).
  */
 public class TelemetryHistoryAdapter extends RecyclerView.Adapter<TelemetryHistoryAdapter.HistoryViewHolder> {
 
     private final List<TelemetryRecord> historyList = new ArrayList<>();
+    private boolean isVetMode = false;
+
+    public void setVetMode(boolean vetMode) {
+        this.isVetMode = vetMode;
+        notifyDataSetChanged();
+    }
 
     public void updateData(List<TelemetryRecord> newHistory) {
         this.historyList.clear();
@@ -43,7 +50,7 @@ public class TelemetryHistoryAdapter extends RecyclerView.Adapter<TelemetryHisto
     @Override
     public void onBindViewHolder(@NonNull HistoryViewHolder holder, int position) {
         TelemetryRecord record = historyList.get(position);
-        holder.bind(record);
+        holder.bind(record, isVetMode);
     }
 
     @Override
@@ -68,43 +75,61 @@ public class TelemetryHistoryAdapter extends RecyclerView.Adapter<TelemetryHisto
             tvAccDetails = itemView.findViewById(R.id.history_tv_acc_details);
         }
 
-        public void bind(TelemetryRecord record) {
+        public void bind(TelemetryRecord record, boolean isVetMode) {
             Context ctx = itemView.getContext();
 
             tvTimestamp.setText(record.getFormattedDateTime());
-            tvTemp.setText(String.format(Locale.US, "%.1f °C", record.getTemperature()));
-            tvDistance.setText(String.format(Locale.US, "Dist: %.0fm", record.getDistance()));
+            tvTemp.setText("🌡️ " + record.getHumanTemperatureLabel());
+            tvDistance.setText("📍 " + record.getHumanDistanceShortLabel());
 
-            tvAccDetails.setText(String.format(
-                    Locale.US,
-                    "|a| = %.2f m/s²",
-                    record.getAccelerationMagnitude()
-            ));
+            if (isVetMode) {
+                tvAccDetails.setText(String.format(
+                        Locale.US,
+                        "Dyn: %.1f m/s²",
+                        record.getDynamicAcceleration()
+                ));
+            } else {
+                tvAccDetails.setText("🐾 " + record.getHumanMotionShortLabel());
+            }
 
-            if (record.isStray() || record.getAnomalyFlag() == 2) {
-                int warningColor = ContextCompat.getColor(ctx, R.color.status_warning);
-                tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
-                tvStatusBadge.setTextColor(warningColor);
-                tvStatusBadge.setText("STRAY");
-                tvDistance.setTextColor(warningColor);
-            } else if (record.getAnomalyFlag() == 1) {
-                int redColor = ContextCompat.getColor(ctx, R.color.status_anomaly);
+            int greenColor = ContextCompat.getColor(ctx, R.color.status_healthy);
+            int amberColor = ContextCompat.getColor(ctx, R.color.status_warning);
+            int redColor = ContextCompat.getColor(ctx, R.color.status_anomaly);
+            int defaultText = ContextCompat.getColor(ctx, R.color.text_primary);
+
+            if (record.isPredatorOrPanic()) {
                 tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
                 tvStatusBadge.setTextColor(redColor);
-                tvStatusBadge.setText("ANOMALY");
-                tvDistance.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
+                tvStatusBadge.setText("DANGER");
+                tvDistance.setTextColor(defaultText);
+            } else if (record.isStray()) {
+                tvStatusBadge.setBackgroundResource(R.drawable.badge_anomaly);
+                tvStatusBadge.setTextColor(redColor);
+                tvStatusBadge.setText("STRAYED");
+                tvDistance.setTextColor(redColor);
+            } else if (record.isFever()) {
+                tvStatusBadge.setBackgroundResource(R.drawable.badge_warning);
+                tvStatusBadge.setTextColor(amberColor);
+                tvStatusBadge.setText("FEVER");
+                tvDistance.setTextColor(defaultText);
+            } else if (record.isCalvingDrop()) {
+                tvStatusBadge.setBackgroundResource(R.drawable.badge_warning);
+                tvStatusBadge.setTextColor(amberColor);
+                tvStatusBadge.setText("CALVING");
+                tvDistance.setTextColor(defaultText);
             } else {
-                int greenColor = ContextCompat.getColor(ctx, R.color.status_healthy);
                 tvStatusBadge.setBackgroundResource(R.drawable.badge_healthy);
                 tvStatusBadge.setTextColor(greenColor);
-                tvStatusBadge.setText("NORMAL");
-                tvDistance.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
+                tvStatusBadge.setText("HEALTHY");
+                tvDistance.setTextColor(defaultText);
             }
 
             if (record.isFever()) {
-                tvTemp.setTextColor(ContextCompat.getColor(ctx, R.color.status_anomaly));
+                tvTemp.setTextColor(redColor);
+            } else if (record.isCalvingDrop()) {
+                tvTemp.setTextColor(amberColor);
             } else {
-                tvTemp.setTextColor(ContextCompat.getColor(ctx, R.color.text_primary));
+                tvTemp.setTextColor(greenColor);
             }
         }
     }

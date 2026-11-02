@@ -19,7 +19,7 @@
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             app:popupTheme="@style/ThemeOverlay.MaterialComponents.Light"
-            app:title="Livestock Biometrics"
+            app:title="Animal Health &amp; Yield"
             app:titleTextColor="@color/white"
             app:navigationIcon="?attr/homeAsUpIndicator" />
 
@@ -37,12 +37,13 @@
             android:layout_height="wrap_content"
             android:orientation="vertical">
 
-            <!-- Primary Node Status Card -->
+            <!-- Animal Identity Header Card -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="14dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="3dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/surface_divider">
@@ -57,27 +58,44 @@
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
                         android:orientation="horizontal"
-                        android:gravity="center_vertical">
+                        android:gravity="top">
 
-                        <TextView
-                            android:id="@+id/detail_tv_node_id"
+                        <LinearLayout
                             android:layout_width="0dp"
                             android:layout_height="wrap_content"
                             android:layout_weight="1"
-                            android:textColor="@color/text_primary"
-                            android:textSize="22sp"
-                            android:textStyle="bold"
-                            tools:text="NODE_001" />
+                            android:orientation="vertical"
+                            android:layout_marginEnd="8dp">
+
+                            <TextView
+                                android:id="@+id/detail_tv_node_id"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_primary"
+                                android:textSize="22sp"
+                                android:textStyle="bold"
+                                tools:text="Malkia (Tag #KE-042)" />
+
+                            <TextView
+                                android:id="@+id/detail_tv_breed_status"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                tools:text="Boran • Milking (NODE_001)" />
+                        </LinearLayout>
 
                         <TextView
                             android:id="@+id/detail_tv_status_badge"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
                             android:paddingStart="12dp"
-                            android:paddingTop="5dp"
+                            android:paddingTop="6dp"
                             android:paddingEnd="12dp"
-                            android:paddingBottom="5dp"
-                            android:text="HEALTHY"
+                            android:paddingBottom="6dp"
+                            android:text="✓ HEALTHY"
                             android:textSize="12sp"
                             android:textStyle="bold"
                             android:background="@drawable/badge_healthy"
@@ -88,156 +106,188 @@
                         android:id="@+id/detail_tv_last_synced"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="4dp"
+                        android:layout_marginTop="6dp"
                         android:textColor="@color/text_muted"
                         android:textSize="12sp"
-                        tools:text="Last Synced: 2026-09-24 09:20:15" />
+                        tools:text="Last Updated: 30 Oct 05:10" />
 
-                    <!-- Quick Vitals Comparison -->
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/detail_tv_profile_notes"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="horizontal"
-                        android:layout_marginTop="16dp">
+                        android:layout_marginTop="6dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        tools:text="Lead dairy cow. High morning yield." />
 
-                        <!-- Temperature Metric -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:padding="12dp"
-                            android:background="@drawable/badge_healthy"
-                            android:backgroundTint="#F0F4F8"
-                            android:layout_marginEnd="6dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Latest Temp"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/detail_tv_temp"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/text_primary"
-                                android:textSize="20sp"
-                                android:textStyle="bold"
-                                tools:text="39.5 °C" />
-
-                            <TextView
-                                android:id="@+id/detail_tv_temp_alert"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:text="Fever Threshold: 39.5°C"
-                                android:textColor="@color/text_muted"
-                                android:textSize="10sp" />
-                        </LinearLayout>
-
-                        <!-- Acceleration Magnitude Metric -->
-                        <LinearLayout
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:orientation="vertical"
-                            android:padding="12dp"
-                            android:background="@drawable/badge_healthy"
-                            android:backgroundTint="#F0F4F8"
-                            android:layout_marginStart="6dp">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="Motion Vector |a|"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="11sp" />
-
-                            <TextView
-                                android:id="@+id/detail_tv_acc_mag"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/text_primary"
-                                android:textSize="20sp"
-                                android:textStyle="bold"
-                                tools:text="9.92 m/s²" />
-
-                            <TextView
-                                android:id="@+id/detail_tv_acc_vector"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:layout_marginTop="2dp"
-                                android:textColor="@color/text_muted"
-                                android:textSize="10sp"
-                                tools:text="X: 1.2  Y: 0.5  Z: 9.8" />
-                        </LinearLayout>
-
-                    </LinearLayout>
-
-                    <!-- Geofence & Proximity Row -->
-                    <LinearLayout
+                    <!-- 56dp Edit Name / Profile Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_edit_animal_profile"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
                         android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:padding="12dp"
-                        android:layout_marginTop="10dp"
-                        android:background="@drawable/badge_healthy"
-                        android:backgroundTint="#F0F4F8">
+                        android:layout_height="56dp"
+                        android:layout_marginTop="12dp"
+                        android:text="✏️ Edit Cow Name, Tag &amp; Profile"
+                        android:textAllCaps="false"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/primary_navy"
+                        app:strokeColor="@color/primary_navy"
+                        app:strokeWidth="2dp"
+                        app:cornerRadius="12dp" />
 
-                        <LinearLayout
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="horizontal"
-                            android:gravity="center_vertical">
-
-                            <ImageView
-                                android:layout_width="20dp"
-                                android:layout_height="20dp"
-                                android:src="@drawable/ic_distance"
-                                app:tint="@color/primary_navy"
-                                android:contentDescription="Distance" />
-
-                            <TextView
-                                android:layout_width="0dp"
-                                android:layout_height="wrap_content"
-                                android:layout_weight="1"
-                                android:layout_marginStart="8dp"
-                                android:text="Gateway Anchor Distance"
-                                android:textColor="@color/text_secondary"
-                                android:textSize="12sp" />
-
-                            <TextView
-                                android:id="@+id/detail_tv_distance"
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:textColor="@color/text_primary"
-                                android:textSize="18sp"
-                                android:textStyle="bold"
-                                tools:text="340 m" />
-                        </LinearLayout>
-
-                        <TextView
-                            android:id="@+id/detail_tv_distance_alert"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:layout_marginTop="4dp"
-                            android:text="Within safe pasture boundary (500m threshold)"
-                            android:textColor="@color/status_healthy"
-                            android:textSize="11sp" />
-                    </LinearLayout>
+                    <!-- 56dp Delete Cow Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_delete_cow"
+                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="8dp"
+                        android:text="🗑️ Delete This Cow &amp; History"
+                        android:textAllCaps="false"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:textColor="@color/status_anomaly"
+                        app:strokeColor="@color/status_anomaly_border"
+                        app:strokeWidth="1.5dp"
+                        app:cornerRadius="12dp" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Veterinary Diagnostic & Triage Advice Card -->
+            <!-- CARD 1: "What You Should Do Now" (Actionable Triage Card) -->
             <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginBottom="16dp"
-                app:cardCornerRadius="14dp"
-                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_divider">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:id="@+id/tv_triage_card_title"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📋 What You Should Do Now"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:id="@+id/tv_triage_role_subtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:text="Plain-Language Herder Checklist"
+                        android:textColor="@color/status_healthy"
+                        android:textSize="12sp"
+                        android:textStyle="bold" />
+
+                    <!-- Farmer Interactive 3-Step Checklist Container -->
+                    <LinearLayout
+                        android:id="@+id/layout_farmer_checklist"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="10dp">
+
+                        <CheckBox
+                            android:id="@+id/cb_farmer_step_1"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
+                            android:paddingStart="6dp"
+                            android:paddingEnd="4dp"
+                            android:text="1. Separate cow from herd into shaded boma pen."
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp" />
+
+                        <CheckBox
+                            android:id="@+id/cb_farmer_step_2"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
+                            android:paddingStart="6dp"
+                            android:paddingEnd="4dp"
+                            android:text="2. Check for ticks under ears and udder swelling."
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp" />
+
+                        <CheckBox
+                            android:id="@+id/cb_farmer_step_3"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:minHeight="48dp"
+                            android:paddingStart="6dp"
+                            android:paddingEnd="4dp"
+                            android:text="3. Call the Field Veterinarian if fever stays high."
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp" />
+                    </LinearLayout>
+
+                    <!-- Veterinarian Full Clinical Differential Diagnosis Text (Visible in ROLE_VET) -->
+                    <TextView
+                        android:id="@+id/detail_tv_clinical_advice"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_metric_pill"
+                        android:lineSpacingExtra="4dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="13sp"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        tools:text="Clinical differential diagnosis..." />
+
+                    <!-- Handled Timestamp Badge -->
+                    <TextView
+                        android:id="@+id/tv_last_handled_status"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:textColor="@color/status_healthy"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:visibility="gone"
+                        tools:visibility="visible"
+                        tools:text="✅ Checked &amp; Handled Today at 05:12" />
+
+                    <!-- 56dp Mark as Checked / Handled Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_mark_handled"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="12dp"
+                        android:text="✅ Mark as Checked / Handled"
+                        android:textAllCaps="false"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="@color/status_healthy"
+                        android:textColor="@color/white"
+                        app:cornerRadius="12dp" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- CARD 2: Milk & Output Tracker Card (New Feature) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
                 app:strokeWidth="1dp"
                 app:strokeColor="@color/surface_divider">
 
@@ -250,25 +300,375 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Clinical Veterinary Analysis"
+                        android:text="🥛 Milk &amp; Calving Output Tracker"
                         android:textColor="@color/text_primary"
-                        android:textSize="16sp"
+                        android:textSize="18sp"
                         android:textStyle="bold" />
 
+                    <!-- Health-to-Yield Insight Banner -->
                     <TextView
-                        android:id="@+id/detail_tv_clinical_advice"
+                        android:id="@+id/detail_tv_yield_banner"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:lineSpacingExtra="3dp"
-                        android:textColor="@color/text_secondary"
+                        android:layout_marginTop="10dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_summary_warning"
+                        android:text="@string/yield_fever_warning"
+                        android:textColor="@color/status_warning"
                         android:textSize="13sp"
-                        tools:text="Normal physiological vital parameters observed across all 3-axis motion and thermal telemetry." />
+                        android:textStyle="bold" />
+
+                    <!-- 3 Production Stat Boxes: Today's Milk, 7-Day Avg, Calf Status -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginTop="12dp"
+                        android:baselineAligned="false">
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:padding="10dp"
+                            android:background="@drawable/bg_metric_pill"
+                            android:orientation="vertical"
+                            android:gravity="center">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Today's Milk"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tv_today_milk_total"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/status_healthy"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                tools:text="7.2 L" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="6dp"
+                            android:padding="10dp"
+                            android:background="@drawable/bg_metric_pill"
+                            android:orientation="vertical"
+                            android:gravity="center">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="7-Day Avg"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tv_seven_day_milk_avg"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/text_primary"
+                                android:textSize="18sp"
+                                android:textStyle="bold"
+                                tools:text="9.8 L" />
+                        </LinearLayout>
+
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:padding="10dp"
+                            android:background="@drawable/bg_metric_pill"
+                            android:orientation="vertical"
+                            android:gravity="center">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Calf Status"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp" />
+
+                            <TextView
+                                android:id="@+id/tv_calf_status_value"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:layout_marginTop="2dp"
+                                android:textColor="@color/primary_navy"
+                                android:textSize="14sp"
+                                android:textStyle="bold"
+                                android:gravity="center"
+                                tools:text="Normal" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Recent Milk Logs Summary -->
+                    <TextView
+                        android:id="@+id/tv_recent_milk_logs"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="10dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp"
+                        android:lineSpacingExtra="2dp"
+                        tools:text="• 30 Oct: Morning 4.2L + Evening 3.0L = 7.2L" />
+
+                    <!-- 56dp Record Milk Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_record_milk_detail"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="12dp"
+                        android:text="+ Record Today's Milk / Calf Status"
+                        android:textAllCaps="false"
+                        android:textSize="15sp"
+                        android:textStyle="bold"
+                        android:backgroundTint="@color/primary_navy"
+                        android:textColor="@color/white"
+                        app:cornerRadius="12dp" />
 
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
-            <!-- Historical Telemetry Section Header -->
+            <!-- CARD 3: Visual Vitals Gauges (Replacing Raw Vector Text) -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="16dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="3dp"
+                app:strokeWidth="1dp"
+                app:strokeColor="@color/surface_divider">
+
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="18dp">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="📊 Visual Health Gauges"
+                        android:textColor="@color/text_primary"
+                        android:textSize="18sp"
+                        android:textStyle="bold" />
+
+                    <!-- Gauge 1: Body Heat Bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="14dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_metric_pill">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🌡️ Body Heat"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/detail_tv_temp"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                tools:text="40.2°C (High Fever!)" />
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/gauge_temp_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:max="100"
+                            android:progress="75"
+                            app:trackThickness="12dp"
+                            app:trackCornerRadius="6dp"
+                            app:trackColor="@color/surface_divider"
+                            app:indicatorColor="@color/status_healthy" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="36°C (Calving) ── [Normal 38.0–39.5°C] ── 42°C (Fever)"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp"
+                            android:gravity="center" />
+
+                        <TextView
+                            android:id="@+id/detail_tv_temp_alert"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Normal body heat range (38.0 - 39.5°C)"
+                            android:textColor="@color/status_healthy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                    <!-- Gauge 2: Movement Bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="12dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_metric_pill">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="🐾 Activity &amp; Movement"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/detail_tv_acc_mag"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                tools:text="Calm / Grazing" />
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/gauge_motion_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:max="100"
+                            android:progress="20"
+                            app:trackThickness="12dp"
+                            app:trackCornerRadius="6dp"
+                            app:trackColor="@color/surface_divider"
+                            app:indicatorColor="@color/status_healthy" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Resting ──── Normal Grazing ──── Running / Distress"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp"
+                            android:gravity="center" />
+
+                        <!-- Raw 3-Axis Vector Text (ONLY visible when logged in as ROLE_VET) -->
+                        <TextView
+                            android:id="@+id/detail_tv_acc_vector"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="6dp"
+                            android:textColor="@color/primary_navy"
+                            android:textSize="11sp"
+                            android:textStyle="bold"
+                            android:visibility="gone"
+                            tools:visibility="visible"
+                            tools:text="[VET TELEMETRY] X: 1.20 | Y: 0.50 | Z: 9.80 | Dyn: 1.40 m/s²" />
+                    </LinearLayout>
+
+                    <!-- Gauge 3: Herd Distance Bar -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_marginTop="12dp"
+                        android:padding="12dp"
+                        android:background="@drawable/bg_metric_pill">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical">
+
+                            <TextView
+                                android:layout_width="0dp"
+                                android:layout_height="wrap_content"
+                                android:layout_weight="1"
+                                android:text="📍 Distance from Boma"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:id="@+id/detail_tv_distance"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:textColor="@color/text_primary"
+                                android:textSize="16sp"
+                                android:textStyle="bold"
+                                tools:text="Near Boma (220m)" />
+                        </LinearLayout>
+
+                        <com.google.android.material.progressindicator.LinearProgressIndicator
+                            android:id="@+id/gauge_distance_bar"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="8dp"
+                            android:max="100"
+                            android:progress="22"
+                            app:trackThickness="12dp"
+                            app:trackCornerRadius="6dp"
+                            app:trackColor="@color/surface_divider"
+                            app:indicatorColor="@color/status_healthy" />
+
+                        <TextView
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="0m (At Boma) ──── 500m (Boundary) ──── 1000m (Strayed)"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp"
+                            android:gravity="center" />
+
+                        <TextView
+                            android:id="@+id/detail_tv_distance_alert"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_marginTop="4dp"
+                            android:text="Inside safe 500m Boma grazing area"
+                            android:textColor="@color/status_healthy"
+                            android:textSize="12sp"
+                            android:textStyle="bold" />
+                    </LinearLayout>
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+
+            <!-- CARD 4: Recent History Log -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
@@ -280,7 +680,7 @@
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
-                    android:text="Telemetry History (30 Days)"
+                    android:text="🕒 Recent Health History Log"
                     android:textColor="@color/text_primary"
                     android:textSize="16sp"
                     android:textStyle="bold" />
@@ -291,7 +691,7 @@
                     android:layout_height="wrap_content"
                     android:textColor="@color/text_muted"
                     android:textSize="12sp"
-                    tools:text="Total Records: 48" />
+                    tools:text="Total Readings: 12" />
             </LinearLayout>
 
             <!-- Telemetry History RecyclerView -->

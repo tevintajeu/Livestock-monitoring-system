@@ -1,109 +1,130 @@
 #!/usr/bin/env python3
 """
-Mock ESP32 Edge Gateway HTTP Server
-Simulates the localized ESP32 SoftAP Web Server (http://192.168.4.1/data or http://localhost:8080/data)
-Serves 30 days of livestock telemetry CSV data for testing the Android Veterinary Client Application.
+Wokwi Simulation Bridge & ESP32 Edge Gateway Server
+Listens to real-time MQTT events from your Wokwi simulation collar nodes on HiveMQ,
+and serves them via HTTP GET /data to the Android MifugoSafe phone app.
 
-Unified CSV Schema:
-node_id, temp, acc_x, acc_y, acc_z, distance, anomaly_flag, timestamp
+NO FAKE COWS: Only streams the real node(s) actively transmitting from Wokwi!
 """
 
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import random
+import threading
 import time
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import paho.mqtt.client as mqtt
 
 PORT = 8080
+MQTT_BROKER = "broker.hivemq.com"
+MQTT_PORT = 1883
+MQTT_TOPIC = "capstone/livestock/telemetry"
 
-SAMPLE_NODES = [
-    {"id": "NODE_001", "base_temp": 38.4, "type": "healthy"},           # Healthy cow (resting/grazing)
-    {"id": "NODE_002", "base_temp": 39.8, "type": "fever"},             # Febrile state / Bovine Respiratory Disease
-    {"id": "NODE_003", "base_temp": 38.5, "type": "healthy"},           # Healthy cow
-    {"id": "NODE_004", "base_temp": 38.6, "type": "predator_motion"},   # High dynamic acceleration / Predator distress
-    {"id": "NODE_005", "base_temp": 40.2, "type": "fever"},             # Critical fever / Acute infection
-    {"id": "NODE_006", "base_temp": 38.2, "type": "healthy"},           # Healthy bull
-    {"id": "NODE_007", "base_temp": 38.7, "type": "stray"},             # Geofence perimeter breach / Straying > 500m
-]
+# In-memory buffer holding ONLY real telemetry received from Wokwi during this run
+telemetry_records = []
+buffer_lock = threading.Lock()
 
-def generate_csv_payload(rows_per_node=12):
-    lines = ["node_id, temp, acc_x, acc_y, acc_z, distance, anomaly_flag, timestamp"]
-    now_epoch = int(time.time())
+def on_connect(client, userdata, flags, rc, *args):
+    if rc == 0:
+        print(f"[*] Connected to HiveMQ Broker ({MQTT_BROKER}).")
+        print(f"[*] Subscribed to topic: '{MQTT_TOPIC}'")
+        print(f"[*] Waiting for your Wokwi simulation to send sensor readings...\n")
+        client.subscribe(MQTT_TOPIC)
+    else:
+        print(f"[!] HiveMQ connection failed with code {rc}")
 
-    for node in SAMPLE_NODES:
-        node_id = node["id"]
-        node_type = node["type"]
+def on_message(client, userdata, msg):
+    try:
+        raw_payload = msg.payload.decode("utf-8").strip()
+        print(f"\n[📡 Wokwi MQTT Received] {raw_payload}")
 
-        for i in range(rows_per_node):
-            timestamp = now_epoch - (i * 3600)  # Each record 1 hour apart
+        parts = [p.strip() for p in raw_payload.split(",")]
+        # Supported format: NODE_ID, TEMP, DYNAMIC_ACCEL, DISTANCE, ANOMALY_FLAG
+        if len(parts) >= 5:
+            node_id = parts[0]
+            temp = float(parts[1])
+            accel = float(parts[2])
+            distance = float(parts[3])
+            flag = int(parts[4])
+            epoch_now = int(time.time())
 
-            if node_type == "fever":
-                temp = round(random.uniform(39.6, 41.1), 1)
-                acc_x = round(random.uniform(-0.4, 0.4), 2)
-                acc_y = round(random.uniform(-0.3, 0.3), 2)
-                acc_z = round(random.uniform(9.6, 9.9), 2)
-                distance = round(random.uniform(50.0, 320.0), 1)
-                anomaly_flag = 1
+            # Format 8-field unified CSV row:
+            # node_id, temp, acc_x, acc_y, acc_z, distance, anomaly_flag, timestamp
+            formatted_row = f"{node_id},{temp:.2f},{accel:.2f},0.00,9.80,{distance:.1f},{flag},{epoch_now}"
 
-            elif node_type == "predator_motion":
-                temp = round(random.uniform(38.4, 39.2), 1)
-                acc_x = round(random.uniform(3.5, 7.0), 2)
-                acc_y = round(random.uniform(4.0, 8.5), 2)
-                acc_z = round(random.uniform(12.0, 18.5), 2)
-                distance = round(random.uniform(150.0, 480.0), 1)
-                anomaly_flag = 1
+            with buffer_lock:
+                # Keep last 50 readings of real active data so buffer doesn't grow indefinitely
+                if len(telemetry_records) >= 50:
+                    telemetry_records.pop(0)
+                telemetry_records.append(formatted_row)
 
-            elif node_type == "stray":
-                temp = round(random.uniform(38.2, 39.1), 1)
-                acc_x = round(random.uniform(-0.5, 0.8), 2)
-                acc_y = round(random.uniform(-0.4, 0.6), 2)
-                acc_z = round(random.uniform(9.5, 9.9), 2)
-                # Breaches the 500m geofence
-                distance = round(random.uniform(540.0, 920.0), 1)
-                anomaly_flag = 2
-
-            else:  # healthy
-                temp = round(random.uniform(38.0, 39.2), 1)
-                acc_x = round(random.uniform(-0.3, 0.4), 2)
-                acc_y = round(random.uniform(-0.2, 0.3), 2)
-                acc_z = round(random.uniform(9.6, 9.9), 2)
-                distance = round(random.uniform(30.0, 380.0), 1)
-                anomaly_flag = 0
-
-            lines.append(f"{node_id}, {temp}, {acc_x}, {acc_y}, {acc_z}, {distance}, {anomaly_flag}, {timestamp}")
-
-    return "\n".join(lines)
-
+            print(f"    -> Parsed for App: {node_id} | {temp:.1f}°C | Motion: {accel:.1f} m/s² | Dist: {distance:.0f}m | Flag: {flag}")
+            print(f"    -> Buffer now has {len(telemetry_records)} reading(s) for your active cow.")
+    except Exception as e:
+        print(f"[!] Error processing MQTT message: {e}")
 
 class GatewayRequestHandler(BaseHTTPRequestHandler):
     def do_GET(self):
         if self.path == "/data" or self.path == "/":
-            payload = generate_csv_payload(rows_per_node=10)
+            with buffer_lock:
+                if not telemetry_records:
+                    # If Wokwi hasn't transmitted yet, return empty CSV with header
+                    csv_output = "node_id,temp,acc_x,acc_y,acc_z,distance,anomaly_flag,timestamp\n"
+                    record_count = 0
+                else:
+                    csv_output = "node_id,temp,acc_x,acc_y,acc_z,distance,anomaly_flag,timestamp\n" + "\n".join(telemetry_records) + "\n"
+                    record_count = len(telemetry_records)
+
             self.send_response(200)
             self.send_header("Content-Type", "text/csv; charset=utf-8")
-            self.send_header("Content-Length", str(len(payload.encode("utf-8"))))
             self.send_header("Access-Control-Allow-Origin", "*")
             self.end_headers()
-            self.wfile.write(payload.encode("utf-8"))
-            print(f"[HTTP 200] Dispatched {len(payload.splitlines())} unified CSV records to client ({self.client_address[0]})")
+            self.wfile.write(csv_output.encode("utf-8"))
+
+            print(f"\n[📱 Phone Sync] Dispatched {record_count} real record(s) to phone at {self.client_address[0]}")
+            if record_count == 0:
+                print("   (Note: Wokwi has not published any readings yet. Start your Wokwi simulation!)")
+
+        elif self.path == "/clear":
+            # Optional endpoint to reset buffer: http://localhost:8080/clear
+            with buffer_lock:
+                telemetry_records.clear()
+            self.send_response(200)
+            self.end_headers()
+            self.wfile.write(b"Buffer Cleared OK\n")
+            print("\n[🧹 Cleared] Telemetry buffer reset to 0 records.")
         else:
             self.send_response(404)
             self.end_headers()
             self.wfile.write(b"Not Found")
 
     def log_message(self, format, *args):
-        # Clean logging
-        print(f"[{self.log_date_time_string()}] {args[0] % args[1:]}")
+        # Suppress noisy default HTTP log lines
+        return
 
-
-def run():
-    server_address = ("0.0.0.0", PORT)
-    httpd = HTTPServer(server_address, GatewayRequestHandler)
-    print("=" * 70)
-    print(f"📡 Mock ESP32 Edge Gateway running on http://localhost:{PORT}/data")
-    print(f"📱 For Android Emulator testing, use: http://10.0.2.2:{PORT}/data")
-    print(f"📶 For Physical Phone testing on local Wi-Fi, use your PC's LAN IP")
-    print("=" * 70)
-    httpd.serve_forever()
-
+def start_mqtt_client():
+    try:
+        client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION1)
+    except AttributeError:
+        client = mqtt.Client()
+    client.on_connect = on_connect
+    client.on_message = on_message
+    try:
+        client.connect(MQTT_BROKER, MQTT_PORT, 60)
+        client.loop_forever()
+    except Exception as e:
+        print(f"[!] Could not connect to HiveMQ: {e}")
 
 if __name__ == "__main__":
-    run()
+    print("=" * 70)
+    print("🚀 MifugoSafe Real Wokwi Bridge Server")
+    print(f"📡 Subscribing to: {MQTT_BROKER} -> '{MQTT_TOPIC}'")
+    print(f"🌐 Serving HTTP endpoint: http://0.0.0.0:{PORT}/data")
+    print("❌ Fake/Imaginary cows removed. Only streams your REAL simulation!")
+    print("=" * 70)
+
+    mqtt_thread = threading.Thread(target=start_mqtt_client, daemon=True)
+    mqtt_thread.start()
+
+    httpd = HTTPServer(("0.0.0.0", PORT), GatewayRequestHandler)
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nStopping server...")

@@ -6,9 +6,10 @@
     android:id="@+id/card_node"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:layout_marginBottom="10dp"
-    app:cardCornerRadius="12dp"
-    app:cardElevation="2dp"
+    android:layout_marginBottom="14dp"
+    app:cardBackgroundColor="@color/surface_card"
+    app:cardCornerRadius="16dp"
+    app:cardElevation="3dp"
     app:strokeWidth="1dp"
     app:strokeColor="@color/surface_divider"
     android:clickable="true"
@@ -18,218 +19,267 @@
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:orientation="vertical">
+        android:orientation="horizontal">
 
-        <!-- Top Status Accent Bar (Red if Anomaly = 1, Green if Anomaly = 0) -->
+        <!-- Left Vertical Accent Strip (8dp wide: Red, Amber, or Green based on urgency) -->
         <View
             android:id="@+id/view_status_accent_bar"
-            android:layout_width="match_parent"
-            android:layout_height="4dp"
+            android:layout_width="8dp"
+            android:layout_height="match_parent"
             android:background="@color/status_healthy" />
 
         <LinearLayout
-            android:layout_width="match_parent"
+            android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_weight="1"
             android:orientation="vertical"
             android:padding="16dp">
 
-            <!-- Header Row: Node ID + Status Badge -->
+            <!-- Header Row: Large Friendly Name + Breed Subtitle + High-Contrast Status Pill -->
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:orientation="horizontal"
-                android:gravity="center_vertical">
+                android:gravity="top">
 
-                <TextView
-                    android:id="@+id/tv_node_id"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:textColor="@color/text_primary"
-                    android:textSize="17sp"
-                    android:textStyle="bold"
-                    tools:text="NODE_001" />
-
-                <!-- Clinical Status Pill -->
-                <TextView
-                    android:id="@+id/tv_status_badge"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:paddingStart="10dp"
-                    android:paddingTop="4dp"
-                    android:paddingEnd="10dp"
-                    android:paddingBottom="4dp"
-                    android:textSize="11sp"
-                    android:textStyle="bold"
-                    android:background="@drawable/badge_healthy"
-                    android:textColor="@color/status_healthy"
-                    tools:text="HEALTHY" />
-            </LinearLayout>
-
-            <!-- Diagnostic Summary Text (e.g. Fever Detected / Motion Alert / Normal) -->
-            <TextView
-                android:id="@+id/tv_diagnostic_summary"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="4dp"
-                android:textSize="12sp"
-                android:textStyle="bold"
-                android:textColor="@color/status_healthy"
-                tools:text="Normal vital parameters" />
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="1dp"
-                android:layout_marginTop="10dp"
-                android:layout_marginBottom="10dp"
-                android:background="@color/surface_divider" />
-
-            <!-- Biometrics Grid: Temperature, 3-Axis Motion & Geofence Distance -->
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical">
-
-                <!-- Temperature Reading -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:orientation="vertical"
+                    android:layout_marginEnd="8dp">
+
+                    <TextView
+                        android:id="@+id/tv_node_id"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:textColor="@color/text_primary"
+                        android:textSize="20sp"
+                        android:textStyle="bold"
+                        tools:text="Malkia (Tag #KE-042)" />
+
+                    <TextView
+                        android:id="@+id/tv_breed_subtitle"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="2dp"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:textStyle="bold"
+                        tools:text="Boran • Milking" />
+                </LinearLayout>
+
+                <!-- High-Contrast Semantic Status Pill -->
+                <TextView
+                    android:id="@+id/tv_status_badge"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:paddingStart="12dp"
+                    android:paddingTop="6dp"
+                    android:paddingEnd="12dp"
+                    android:paddingBottom="6dp"
+                    android:textSize="11sp"
+                    android:textStyle="bold"
+                    android:background="@drawable/badge_healthy"
+                    android:textColor="@color/status_healthy"
+                    tools:text="✓ HEALTHY" />
+            </LinearLayout>
+
+            <!-- Plain-Language Summary Box -->
+            <LinearLayout
+                android:id="@+id/layout_plain_summary_box"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:padding="12dp"
+                android:background="@drawable/bg_summary_healthy"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/tv_diagnostic_summary"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:lineSpacingExtra="2dp"
+                    android:textColor="@color/status_healthy"
+                    tools:text="🔥 Body is very hot (40.2°C). Keep Malkia in the shade and call the vet." />
+
+                <!-- Health-to-Yield Insight Banner (Shown when Fever or Milk logged) -->
+                <TextView
+                    android:id="@+id/tv_yield_insight_banner"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="6dp"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/status_warning"
+                    android:visibility="gone"
+                    tools:visibility="visible"
+                    tools:text="⚠️ Fever detected! Expect temporary milk drop. Check udder for mastitis." />
+            </LinearLayout>
+
+            <!-- 3 Visual Metric Pills (Icon + Simple Label) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="12dp"
+                android:baselineAligned="false">
+
+                <!-- Pill 1: Temperature -->
+                <LinearLayout
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:padding="8dp"
+                    android:background="@drawable/bg_metric_pill"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
                     <ImageView
                         android:id="@+id/img_temp_icon"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:src="@drawable/ic_thermometer"
                         app:tint="@color/status_healthy"
-                        android:contentDescription="Temperature" />
+                        android:contentDescription="Body Heat" />
 
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/tv_node_temperature"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginStart="4dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Body Temp"
-                            android:textColor="@color/text_muted"
-                            android:textSize="9sp" />
-
-                        <TextView
-                            android:id="@+id/tv_node_temperature"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:textStyle="bold"
-                            tools:text="38.7 °C" />
-                    </LinearLayout>
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="40.2°C (Hot!)" />
                 </LinearLayout>
 
-                <!-- Acceleration Magnitude -->
+                <!-- Pill 2: Motion -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:layout_marginEnd="6dp"
+                    android:padding="8dp"
+                    android:background="@drawable/bg_metric_pill"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
                     <ImageView
                         android:id="@+id/img_motion_icon"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:src="@drawable/ic_motion"
                         app:tint="@color/primary_navy"
-                        android:contentDescription="Acceleration" />
+                        android:contentDescription="Movement" />
 
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/tv_node_acc_mag"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginStart="4dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Motion |a|"
-                            android:textColor="@color/text_muted"
-                            android:textSize="9sp" />
-
-                        <TextView
-                            android:id="@+id/tv_node_acc_mag"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:textStyle="bold"
-                            tools:text="9.88 m/s²" />
-                    </LinearLayout>
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="🐾 Calm" />
                 </LinearLayout>
 
-                <!-- Geofence Distance -->
+                <!-- Pill 3: Distance -->
                 <LinearLayout
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"
                     android:layout_weight="1"
+                    android:padding="8dp"
+                    android:background="@drawable/bg_metric_pill"
                     android:orientation="horizontal"
                     android:gravity="center_vertical">
 
                     <ImageView
                         android:id="@+id/img_distance_icon"
-                        android:layout_width="18dp"
-                        android:layout_height="18dp"
+                        android:layout_width="16dp"
+                        android:layout_height="16dp"
                         android:src="@drawable/ic_distance"
                         app:tint="@color/primary_navy"
                         android:contentDescription="Distance" />
 
-                    <LinearLayout
+                    <TextView
+                        android:id="@+id/tv_node_distance"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical"
-                        android:layout_marginStart="4dp">
-
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Distance"
-                            android:textColor="@color/text_muted"
-                            android:textSize="9sp" />
-
-                        <TextView
-                            android:id="@+id/tv_node_distance"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:textColor="@color/text_primary"
-                            android:textSize="13sp"
-                            android:textStyle="bold"
-                            tools:text="320 m" />
-                    </LinearLayout>
+                        android:layout_marginStart="4dp"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        tools:text="220m (Near)" />
                 </LinearLayout>
-
-                <!-- Chevron Indicator for Details -->
-                <ImageView
-                    android:layout_width="20dp"
-                    android:layout_height="20dp"
-                    android:src="@drawable/ic_chevron_right"
-                    app:tint="@color/text_muted"
-                    android:contentDescription="View Details" />
-
             </LinearLayout>
 
-            <!-- Bottom Row: Last Sync Timestamp -->
-            <TextView
-                android:id="@+id/tv_node_timestamp"
+            <!-- Timestamp & Today's Milk Summary Row -->
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="8dp"
-                android:textColor="@color/text_muted"
-                android:textSize="11sp"
-                tools:text="Last Synced: 2026-09-24 09:20:15" />
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginTop="8dp">
+
+                <TextView
+                    android:id="@+id/tv_node_timestamp"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:textColor="@color/text_muted"
+                    android:textSize="11sp"
+                    tools:text="Updated: 30 Oct 05:10" />
+
+                <TextView
+                    android:id="@+id/tv_card_milk_summary"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:textColor="@color/status_healthy"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    tools:text="🥛 Today: 7.2 L" />
+            </LinearLayout>
+
+            <!-- Quick-Action Footer on Card (Fitts's Law: 56dp height, 12dp spacing) -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:layout_marginTop="10dp">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_card_log_milk"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:layout_marginEnd="12dp"
+                    android:text="🥛 Log Milk"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/status_healthy"
+                    app:strokeColor="@color/status_healthy"
+                    app:strokeWidth="2dp"
+                    app:cornerRadius="12dp" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_card_view_health"
+                    android:layout_width="0dp"
+                    android:layout_height="56dp"
+                    android:layout_weight="1"
+                    android:text="🔍 View Health"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:textColor="@color/white"
+                    android:backgroundTint="@color/primary_navy"
+                    app:cornerRadius="12dp" />
+            </LinearLayout>
 
         </LinearLayout>
     </LinearLayout>

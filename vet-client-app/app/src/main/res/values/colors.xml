@@ -1,34 +1,37 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Brand / Primary Palette (Veterinary Clinical Theme) -->
+    <!-- Brand / Primary Palette (MifugoSafe Daylight Theme) -->
     <color name="primary_navy">#0F2942</color>
     <color name="primary_dark">#081726</color>
     <color name="primary_light">#1E3A5F</color>
-    <color name="accent_teal">#00A389</color>
+    <color name="accent_teal">#00875A</color>
+    <color name="cta_sync_teal">#00875A</color>
 
-    <!-- Biometric Status Colors -->
-    <!-- Normal (Healthy: Green) -->
-    <color name="status_healthy">#00875A</color>
-    <color name="status_healthy_bg">#E3FCEF</color>
-    <color name="status_healthy_border">#ABF5D1</color>
-
-    <!-- Anomaly / Distress / Fever (Red Alert) -->
-    <color name="status_anomaly">#DE350B</color>
-    <color name="status_anomaly_bg">#FFEBE6</color>
-    <color name="status_anomaly_border">#FFBDAD</color>
-
-    <!-- Warning / Elevated (Orange Amber) -->
-    <color name="status_warning">#FF8B00</color>
-    <color name="status_warning_bg">#FFF0B3</color>
-
-    <!-- Surfaces & Neutrals -->
-    <color name="surface_background">#F4F6F8</color>
+    <!-- High-Contrast Outdoor Daylight Surfaces & Typography -->
+    <color name="surface_background">#F4F5F7</color>
     <color name="surface_card">#FFFFFF</color>
+    <color name="surface_subtle">#F8FAFC</color>
     <color name="surface_divider">#E2E8F0</color>
-    <color name="text_primary">#172B4D</color>
-    <color name="text_secondary">#6B778C</color>
-    <color name="text_muted">#97A0AF</color>
-    
+    <color name="text_primary">#111827</color>
+    <color name="text_secondary">#374151</color>
+    <color name="text_muted">#6B7280</color>
+
+    <!-- Semantic Triage Colors (Colorblind & Glance-Friendly) -->
+    <!-- 1. Healthy (Salama): Deep Forest Green -->
+    <color name="status_healthy">#0D7A4F</color>
+    <color name="status_healthy_bg">#E6F6EE</color>
+    <color name="status_healthy_border">#A7F3D0</color>
+
+    <!-- 2. Fever / Calving (Afya / Homa): Warm Amber -->
+    <color name="status_warning">#D97706</color>
+    <color name="status_warning_bg">#FEF3C7</color>
+    <color name="status_warning_border">#FDE68A</color>
+
+    <!-- 3. Stray / Predator Danger (Hatari): Crimson Red -->
+    <color name="status_anomaly">#DC2626</color>
+    <color name="status_anomaly_bg">#FEE2E2</color>
+    <color name="status_anomaly_border">#FECACA</color>
+
     <color name="white">#FFFFFF</color>
     <color name="black">#000000</color>
 </resources>

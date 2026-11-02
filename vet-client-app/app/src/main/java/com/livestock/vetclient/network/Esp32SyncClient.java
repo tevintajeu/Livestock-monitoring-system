@@ -24,22 +24,26 @@ import okhttp3.ResponseBody;
 
 /**
  * High-performance network synchronization client designed to communicate with the
- * ESP32 Edge Gateway over local Wi-Fi Access Point (SoftAP).
+ * ESP32 Edge Gateway (Boma Receiver) over local Wi-Fi Access Point (SoftAP).
  *
- * Downloads raw telemetry CSV payload, validates schema integrity, parses data rows
- * into TelemetryRecord models, and dispatches callbacks onto the Android Main (UI) Thread.
+ * Supports tolerant parsing of:
+ * - 5-field Wokwi/Gateway CSV: NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
+ * - 6/7/8-field Legacy/Unified CSV: NODE_ID,TEMP,ACC_X,ACC_Y,ACC_Z,[DISTANCE,]ANOMALY_FLAG[,TIMESTAMP]
+ *
+ * Anomaly Flags:
+ * 0 = Healthy (Salama)
+ * 1 = Fever / Calving Drop (<37.8°C or >39.5°C)
+ * 2 = Straying (>500m)
+ * 3 = Predator / Panic Motion (>14.0 m/s²)
  */
 public class Esp32SyncClient {
 
     private static final String TAG = "Esp32SyncClient";
-    public static final String DEFAULT_GATEWAY_URL = "http://192.168.4.1/data";
+    public static final String DEFAULT_GATEWAY_URL = "http://127.0.0.1:8080/data";
 
     private final OkHttpClient httpClient;
     private final Handler mainHandler;
 
-    /**
-     * Callback interface for synchronization events.
-     */
     public interface SyncCallback {
         void onSyncStarted();
         void onSyncSuccess(List<TelemetryRecord> records);
@@ -47,9 +51,15 @@ public class Esp32SyncClient {
     }
 
     public Esp32SyncClient() {
-        this.mainHandler = new Handler(Looper.getMainLooper());
-        
-        // Configure generous timeouts suitable for ESP32 flash-memory reads & Wi-Fi AP latency
+        Handler h = null;
+        try {
+            Looper mainLooper = Looper.getMainLooper();
+            if (mainLooper != null) {
+                h = new Handler(mainLooper);
+            }
+        } catch (Throwable ignored) {}
+        this.mainHandler = h;
+
         this.httpClient = new OkHttpClient.Builder()
                 .connectTimeout(15, TimeUnit.SECONDS)
                 .readTimeout(30, TimeUnit.SECONDS)
@@ -58,24 +68,18 @@ public class Esp32SyncClient {
                 .build();
     }
 
-    /**
-     * Synchronously/Asynchronously executes HTTP GET to the ESP32 gateway endpoint.
-     *
-     * @param gatewayUrl e.g. "http://192.168.4.1/data"
-     * @param callback   UI thread callback listener
-     */
     public void syncFromGateway(String gatewayUrl, @NonNull final SyncCallback callback) {
         final String targetUrl = (gatewayUrl != null && !gatewayUrl.trim().isEmpty())
                 ? gatewayUrl.trim()
                 : DEFAULT_GATEWAY_URL;
 
         callback.onSyncStarted();
-        Log.d(TAG, "Initiating HTTP GET sync to ESP32 Gateway: " + targetUrl);
+        Log.d(TAG, "Initiating HTTP GET sync to Boma Gateway: " + targetUrl);
 
         Request request = new Request.Builder()
                 .url(targetUrl)
                 .header("Accept", "text/csv, text/plain")
-                .header("User-Agent", "LivestockVetClient/1.0")
+                .header("User-Agent", "MifugoSafeClient/2.0")
                 .get()
                 .build();
 
@@ -91,40 +95,40 @@ public class Esp32SyncClient {
             public void onResponse(@NonNull Call call, @NonNull Response response) {
                 try (ResponseBody responseBody = response.body()) {
                     if (!response.isSuccessful() || responseBody == null) {
-                        final String errMsg = "ESP32 Gateway responded with HTTP code: " + response.code();
+                        final String errMsg = "Boma Receiver responded with status code: " + response.code();
                         Log.e(TAG, errMsg);
                         mainHandler.post(() -> callback.onSyncFailure(errMsg));
                         return;
                     }
 
-                    // Read full CSV payload
                     String rawCsvData = responseBody.string();
                     Log.d(TAG, "Received raw payload bytes: " + rawCsvData.length());
 
-                    // Parse CSV data on worker thread
                     List<TelemetryRecord> parsedRecords = parseCsvPayload(rawCsvData);
 
                     if (parsedRecords.isEmpty()) {
-                        mainHandler.post(() -> callback.onSyncFailure("Connected to gateway, but 0 valid telemetry records could be parsed."));
+                        mainHandler.post(() -> callback.onSyncFailure("Connected to Boma Receiver, but no new cow readings were found."));
                     } else {
                         mainHandler.post(() -> callback.onSyncSuccess(parsedRecords));
                     }
 
                 } catch (Exception ex) {
                     Log.e(TAG, "Error reading/parsing CSV response", ex);
-                    mainHandler.post(() -> callback.onSyncFailure("Payload parsing error: " + ex.getMessage()));
+                    mainHandler.post(() -> callback.onSyncFailure("Error reading Boma Receiver data: " + ex.getMessage()));
                 }
             }
         });
     }
 
     /**
-     * Parses the multi-line CSV string received from the ESP32 gateway.
+     * Tolerant multi-schema CSV parser supporting both 5-field Wokwi/Gateway CSV and 6/7/8-field CSV.
      *
      * Supported CSV Schemas:
-     * Unified (8-field): NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, DISTANCE, ANOMALY_FLAG, TIMESTAMP
-     * Firmware (5-field): NODE_ID, TEMP, ACC_X, DISTANCE, ANOMALY_FLAG
-     * Legacy (6/7-field): NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, ANOMALY_FLAG[, TIMESTAMP]
+     * - 5-field (Wokwi/Gateway): NODE_ID, TEMP, DYNAMIC_ACCEL, DISTANCE, ANOMALY_FLAG
+     * - 6-field (Legacy):        NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, ANOMALY_FLAG
+     * - 7-field (Legacy + TS):   NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, ANOMALY_FLAG, TIMESTAMP
+     * - 7-field (With Dist):     NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, DISTANCE, ANOMALY_FLAG
+     * - 8-field (Unified):       NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, DISTANCE, ANOMALY_FLAG, TIMESTAMP
      */
     public List<TelemetryRecord> parseCsvPayload(String csvContent) throws IOException {
         List<TelemetryRecord> records = new ArrayList<>();
@@ -141,47 +145,48 @@ public class Esp32SyncClient {
                 lineNumber++;
                 line = line.trim();
 
-                // Skip blank lines or comments
-                if (line.isEmpty() || line.startsWith("#")) {
+                if (line.isEmpty() || line.startsWith("#") || line.startsWith("---")) {
                     continue;
                 }
 
-                // Check for header row
                 String lower = line.toLowerCase();
-                if (lower.startsWith("node_id") || lower.startsWith("node") || lower.contains("anomaly")) {
-                    Log.d(TAG, "Skipping CSV header row at line " + lineNumber);
+                if (lower.startsWith("node_id") || lower.startsWith("node,") || lower.contains("anomaly_flag")) {
+                    safeLogD("Skipping CSV header row at line " + lineNumber);
                     continue;
                 }
 
                 String[] tokens = line.split(",");
                 if (tokens.length < 5) {
-                    Log.w(TAG, "Skipping malformed row " + lineNumber + " (expected >= 5 tokens, got " + tokens.length + "): " + line);
+                    safeLogW("Skipping malformed row " + lineNumber + " (expected >= 5 tokens, got " + tokens.length + "): " + line);
                     continue;
                 }
 
                 try {
                     String nodeId = tokens[0].trim();
+                    if (nodeId.isEmpty()) continue;
+
                     double temp = Double.parseDouble(tokens[1].trim());
                     double accX = Double.parseDouble(tokens[2].trim());
                     double accY = 0.0;
-                    double accZ = 9.8;
+                    double accZ = 0.0;
                     double distance = 0.0;
                     int anomalyFlag = 0;
                     long recordTimestamp = baseTime - (records.size() * 1000L);
 
                     if (tokens.length == 5) {
-                        // 5-field firmware schema: NODE_ID, TEMP, ACC_X, DISTANCE, ANOMALY_FLAG
+                        // 5-field Wokwi/Gateway CSV: NODE_ID, TEMP, DYNAMIC_ACCEL, DISTANCE, ANOMALY_FLAG
+                        // Store dynamic_accel in accX with accY = 0.0 and accZ = 0.0
                         distance = Double.parseDouble(tokens[3].trim());
-                        anomalyFlag = Integer.parseInt(tokens[4].trim());
+                        anomalyFlag = parseSafeAnomalyFlag(tokens[4].trim());
                     } else if (tokens.length == 6) {
-                        // 6-field legacy schema: NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, ANOMALY_FLAG
+                        // 6-field legacy CSV: NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, ANOMALY_FLAG
                         accY = Double.parseDouble(tokens[3].trim());
                         accZ = Double.parseDouble(tokens[4].trim());
-                        anomalyFlag = Integer.parseInt(tokens[5].trim());
+                        anomalyFlag = parseSafeAnomalyFlag(tokens[5].trim());
                     } else if (tokens.length == 7) {
-                        // Could be:
-                        // Case A: node_id, temp, acc_x, acc_y, acc_z, distance, anomaly_flag
-                        // Case B: node_id, temp, acc_x, acc_y, acc_z, anomaly_flag, timestamp
+                        // 7-field CSV:
+                        // Case A: NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, DISTANCE, ANOMALY_FLAG
+                        // Case B: NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, ANOMALY_FLAG, TIMESTAMP
                         accY = Double.parseDouble(tokens[3].trim());
                         accZ = Double.parseDouble(tokens[4].trim());
                         double val5 = Double.parseDouble(tokens[5].trim());
@@ -195,12 +200,31 @@ public class Esp32SyncClient {
                             anomalyFlag = (int) val6;
                         }
                     } else {
-                        // Unified 8-field schema: NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, DISTANCE, ANOMALY_FLAG, TIMESTAMP
+                        // 8-field unified CSV: NODE_ID, TEMP, ACC_X, ACC_Y, ACC_Z, DISTANCE, ANOMALY_FLAG, TIMESTAMP
                         accY = Double.parseDouble(tokens[3].trim());
                         accZ = Double.parseDouble(tokens[4].trim());
                         distance = Double.parseDouble(tokens[5].trim());
-                        anomalyFlag = Integer.parseInt(tokens[6].trim());
+                        anomalyFlag = parseSafeAnomalyFlag(tokens[6].trim());
                         recordTimestamp = parseEpoch(tokens[7].trim(), recordTimestamp);
+                    }
+
+                    // Normalize anomalyFlag according to firmware rules:
+                    // 0 = Healthy, 1 = Fever/Calving (<37.8°C or >39.5°C), 2 = Straying (>500m), 3 = Predator/Panic (>14.0 m/s²)
+                    double dynAccel = (Math.abs(accY) < 0.001 && Math.abs(accZ) < 0.001)
+                            ? Math.abs(accX)
+                            : Math.abs(Math.sqrt(accX * accX + accY * accY + accZ * accZ) - 9.81);
+
+                    if (anomalyFlag < 0 || anomalyFlag > 3) {
+                        anomalyFlag = 1;
+                    }
+                    if (anomalyFlag == 0) {
+                        if (dynAccel > 14.0) {
+                            anomalyFlag = 3;
+                        } else if (distance > 500.0) {
+                            anomalyFlag = 2;
+                        } else if (temp > 39.5 || (temp < 37.8 && temp >= 35.0)) {
+                            anomalyFlag = 1;
+                        }
                     }
 
                     TelemetryRecord record = new TelemetryRecord(
@@ -217,13 +241,33 @@ public class Esp32SyncClient {
                     records.add(record);
 
                 } catch (NumberFormatException nfe) {
-                    Log.w(TAG, "Number format error at line " + lineNumber + ": " + line, nfe);
+                    safeLogW("Skipping unparseable row at line " + lineNumber + ": " + line);
                 }
             }
         }
 
-        Log.i(TAG, "Successfully parsed " + records.size() + " telemetry records from CSV.");
+        safeLogI("Successfully parsed " + records.size() + " telemetry records from CSV.");
         return records;
+    }
+
+    private void safeLogD(String msg) {
+        try { Log.d(TAG, msg); } catch (Throwable ignored) {}
+    }
+
+    private void safeLogI(String msg) {
+        try { Log.i(TAG, msg); } catch (Throwable ignored) {}
+    }
+
+    private void safeLogW(String msg) {
+        try { Log.w(TAG, msg); } catch (Throwable ignored) {}
+    }
+
+    private int parseSafeAnomalyFlag(String raw) {
+        try {
+            return (int) Double.parseDouble(raw);
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private long parseEpoch(String rawTimestamp, long defaultTimestamp) {
@@ -238,18 +282,16 @@ public class Esp32SyncClient {
         }
     }
 
-    /**
-     * Formats actionable troubleshooting messages for common ESP32 Wi-Fi connection issues.
-     */
     private String formatNetworkError(IOException e, String url) {
         String msg = e.getMessage() != null ? e.getMessage() : e.toString();
         if (msg.contains("Failed to connect") || msg.contains("ConnectException") || msg.contains("ENETUNREACH")) {
-            return "Unable to reach ESP32 Gateway (" + url + ").\n\nPlease ensure your phone is connected to the ESP32 Wi-Fi Access Point (e.g. \"ESP32_LIVESTOCK_AP\").";
+            return "Could not connect to the Boma Receiver Box.\n\n" +
+                   "1. Make sure the Boma Box is powered on.\n" +
+                   "2. Connect your phone Wi-Fi to \"ESP32_LIVESTOCK_AP\".\n" +
+                   "3. Tap \"Update Herd Status\" again.";
         } else if (msg.contains("timeout") || msg.contains("SocketTimeoutException")) {
-            return "Connection timed out. The ESP32 Gateway may be busy reading flash storage or LoRa buffers.";
-        } else if (msg.contains("CLEARTEXT")) {
-            return "Cleartext HTTP traffic was rejected by Android security. Ensure networkSecurityConfig is active.";
+            return "The Boma Receiver took too long to respond. Move closer to the Boma Box and try again.";
         }
-        return "Network sync error: " + msg;
+        return "Could not reach Boma Receiver (" + msg + ")";
     }
 }

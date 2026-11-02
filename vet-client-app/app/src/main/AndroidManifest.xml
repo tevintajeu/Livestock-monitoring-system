@@ -20,9 +20,9 @@
         android:usesCleartextTraffic="true"
         tools:targetApi="31">
 
-        <!-- Main Triage Dashboard Activity -->
+        <!-- Screen 1: Offline M-Pesa Style PIN & Role Login Activity (Launcher) -->
         <activity
-            android:name=".ui.MainActivity"
+            android:name=".ui.LoginActivity"
             android:exported="true"
             android:label="@string/app_name">
             <intent-filter>
@@ -31,7 +31,13 @@
             </intent-filter>
         </activity>
 
-        <!-- Detailed Livestock Biometric & Diagnostic Activity -->
+        <!-- Screen 2: Human-Centered Herd Triage Dashboard Activity -->
+        <activity
+            android:name=".ui.MainActivity"
+            android:exported="true"
+            android:label="@string/title_dashboard" />
+
+        <!-- Screen 3: Animal Health, Action Checklist & Yield Detail Activity -->
         <activity
             android:name=".ui.NodeDetailActivity"
             android:exported="false"

@@ -7,7 +7,7 @@
     android:layout_height="match_parent"
     android:background="@color/surface_background">
 
-    <!-- Top AppBar / Clinical Header -->
+    <!-- Top AppBar: Brand Header + Active Role Switcher + Guided Boma Box Sync Card -->
     <com.google.android.material.appbar.AppBarLayout
         android:id="@+id/app_bar_layout"
         android:layout_width="match_parent"
@@ -15,167 +15,341 @@
         android:background="@color/primary_navy"
         android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
 
-        <androidx.appcompat.widget.Toolbar
-            android:id="@+id/toolbar"
-            android:layout_width="match_parent"
-            android:layout_height="?attr/actionBarSize"
-            app:popupTheme="@style/ThemeOverlay.MaterialComponents.Light"
-            app:title="@string/app_name"
-            app:titleTextColor="@color/white"
-            app:subtitle="ESP32 LoRa Gateway Client (Offline Mode)"
-            app:subtitleTextColor="@color/surface_divider" />
-
-        <!-- Gateway Connection & Triage Stats Strip -->
+        <!-- Custom Top Bar with Role Badge & Quick Switch -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:orientation="vertical"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
             android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:paddingBottom="12dp">
+            android:paddingTop="12dp"
+            android:paddingEnd="12dp"
+            android:paddingBottom="8dp">
 
-            <!-- AP Connection Status Row -->
             <LinearLayout
-                android:id="@+id/layout_gateway_config"
-                android:layout_width="match_parent"
+                android:layout_width="0dp"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:layout_marginBottom="8dp">
+                android:layout_weight="1"
+                android:orientation="vertical">
 
-                <ImageView
-                    android:id="@+id/img_gateway_status"
-                    android:layout_width="18dp"
-                    android:layout_height="18dp"
-                    android:src="@drawable/ic_wifi_gateway"
-                    app:tint="@color/accent_teal"
-                    android:contentDescription="Gateway Status" />
+                <androidx.appcompat.widget.Toolbar
+                    android:id="@+id/toolbar"
+                    android:layout_width="wrap_content"
+                    android:layout_height="32dp"
+                    android:minHeight="32dp"
+                    app:contentInsetStart="0dp"
+                    app:title="MifugoSafe"
+                    app:titleTextColor="@color/white" />
 
                 <TextView
-                    android:id="@+id/tv_gateway_endpoint"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:layout_marginStart="8dp"
-                    android:text="Target: http://192.168.4.1/data"
-                    android:textColor="@color/white"
-                    android:textSize="12sp"
-                    android:clickable="true"
-                    android:focusable="true" />
-
-                <!-- Sync Now Button -->
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_sync_gateway"
+                    android:id="@+id/tv_app_subtitle"
                     android:layout_width="wrap_content"
-                    android:layout_height="38dp"
-                    android:text="@string/btn_sync_now"
-                    android:textSize="12sp"
-                    android:textAllCaps="false"
-                    app:cornerRadius="19dp"
-                    app:icon="@drawable/ic_sync"
-                    app:iconSize="16dp"
-                    android:backgroundTint="@color/accent_teal"
-                    android:textColor="@color/white" />
+                    android:layout_height="wrap_content"
+                    android:text="Smart Herd &amp; Vet Monitor • Offline Ready"
+                    android:textColor="@color/surface_divider"
+                    android:textSize="11sp" />
             </LinearLayout>
 
-            <!-- Triage Counters Card -->
+            <!-- 1-Tap Role Switch Badge (Long-press opens Gateway IP Config) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_role_switch"
+                android:layout_width="wrap_content"
+                android:layout_height="48dp"
+                android:text="👨🏾‍🌾 Mode: Herder"
+                android:textAllCaps="false"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                app:cornerRadius="24dp"
+                android:backgroundTint="@color/status_healthy"
+                android:textColor="@color/white" />
+
+            <!-- Vet IP Settings Button (Visible in Vet Mode) -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_vet_ip_settings"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:layout_marginStart="4dp"
+                android:text="⚙️"
+                android:textSize="18sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:visibility="gone"
+                tools:visibility="visible" />
+
+            <!-- Wipe / Clean Slate Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_clear_all_cows"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="🗑️"
+                android:textSize="16sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp"
+                android:contentDescription="Clear All Animals" />
+
+            <!-- Lock / Switch PIN Screen Button -->
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/btn_lock_session"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:text="🔒"
+                android:textSize="16sp"
+                android:insetTop="0dp"
+                android:insetBottom="0dp" />
+        </LinearLayout>
+
+        <!-- Guided "Boma Box" Sync Banner Card -->
+        <com.google.android.material.card.MaterialCardView
+            android:id="@+id/layout_gateway_config"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="14dp"
+            android:layout_marginEnd="14dp"
+            android:layout_marginBottom="10dp"
+            app:cardBackgroundColor="@color/surface_card"
+            app:cardCornerRadius="14dp"
+            app:cardElevation="2dp">
+
             <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:baselineAligned="false">
+                android:orientation="vertical"
+                android:padding="14dp">
 
-                <!-- Total Nodes Box -->
+                <!-- Status Row + Need Help Link -->
                 <LinearLayout
-                    android:layout_width="0dp"
+                    android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:padding="8dp"
-                    android:background="@drawable/badge_healthy"
-                    android:backgroundTint="#1AFFFFFF"
-                    android:layout_marginEnd="4dp">
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:id="@+id/img_gateway_status"
+                        android:layout_width="22dp"
+                        android:layout_height="22dp"
+                        android:src="@drawable/ic_wifi_gateway"
+                        app:tint="@color/status_healthy"
+                        android:contentDescription="Boma Box Status" />
+
+                    <LinearLayout
+                        android:layout_width="0dp"
+                        android:layout_height="wrap_content"
+                        android:layout_weight="1"
+                        android:layout_marginStart="8dp"
+                        android:orientation="vertical">
+
+                        <TextView
+                            android:id="@+id/tv_boma_box_status"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Boma Receiver: Ready to Sync"
+                            android:textColor="@color/text_primary"
+                            android:textSize="14sp"
+                            android:textStyle="bold" />
+
+                        <!-- Technical Gateway Endpoint (Hidden in Farmer Mode, Shown in Vet Mode) -->
+                        <TextView
+                            android:id="@+id/tv_gateway_endpoint"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Target: http://192.168.4.1/data"
+                            android:textColor="@color/text_muted"
+                            android:textSize="11sp"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/tv_need_help_connecting"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:padding="6dp"
+                        android:text="❓ Need Help?"
+                        android:textColor="@color/primary_navy"
+                        android:textSize="12sp"
+                        android:textStyle="bold"
+                        android:background="@drawable/bg_metric_pill" />
+                </LinearLayout>
+
+                <!-- Primary 56dp CTA Sync Button -->
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/btn_sync_gateway"
+                    android:layout_width="match_parent"
+                    android:layout_height="56dp"
+                    android:layout_marginTop="10dp"
+                    android:text="@string/btn_sync_now"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
+                    app:cornerRadius="12dp"
+                    android:backgroundTint="@color/cta_sync_teal"
+                    android:textColor="@color/white" />
+
+                <!-- Triage Summary Strip (Hidden counters kept for backward compatibility + visual summary) -->
+                <LinearLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:layout_marginTop="8dp"
+                    android:gravity="center_vertical">
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Herd Summary: "
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/tv_count_total_nodes"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="@color/white"
-                        android:textSize="18sp"
+                        android:text="3"
+                        android:textColor="@color/text_primary"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/total_nodes_label"
-                        android:textColor="@color/surface_divider"
-                        android:textSize="11sp" />
-                </LinearLayout>
-
-                <!-- Anomaly / Alert Nodes Box -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:padding="8dp"
-                    android:background="@drawable/badge_anomaly"
-                    android:layout_marginStart="4dp"
-                    android:layout_marginEnd="4dp">
+                        android:text=" Cows  •  "
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
 
                     <TextView
                         android:id="@+id/tv_count_anomaly_nodes"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0"
+                        android:text="2"
                         android:textColor="@color/status_anomaly"
-                        android:textSize="18sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/anomaly_nodes_label"
+                        android:text=" Need Attention  •  "
                         android:textColor="@color/status_anomaly"
-                        android:textSize="11sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
-                </LinearLayout>
-
-                <!-- Healthy Nodes Box -->
-                <LinearLayout
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_weight="1"
-                    android:orientation="vertical"
-                    android:gravity="center"
-                    android:padding="8dp"
-                    android:background="@drawable/badge_healthy"
-                    android:layout_marginStart="4dp">
 
                     <TextView
                         android:id="@+id/tv_count_healthy_nodes"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="0"
+                        android:text="1"
                         android:textColor="@color/status_healthy"
-                        android:textSize="18sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="@string/normal_nodes_label"
+                        android:text=" Healthy"
                         android:textColor="@color/status_healthy"
-                        android:textSize="11sp"
+                        android:textSize="12sp"
                         android:textStyle="bold" />
                 </LinearLayout>
 
             </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
-        </LinearLayout>
+        <!-- Interactive Filter Chips Bar (Triage First, 56dp height touch targets, 12dp spacing) -->
+        <HorizontalScrollView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:scrollbars="none"
+            android:background="@color/surface_background"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="10dp"
+            android:paddingBottom="6dp">
+
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/chip_filter_all"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="12dp"
+                    android:text="All Cows (3)"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="28dp"
+                    android:backgroundTint="@color/primary_navy"
+                    android:textColor="@color/white" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/chip_filter_attention"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="12dp"
+                    android:text="🚨 Needs Attention (2)"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="28dp"
+                    app:strokeColor="@color/status_anomaly"
+                    app:strokeWidth="2dp"
+                    android:backgroundTint="@color/surface_card"
+                    android:textColor="@color/status_anomaly" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/chip_filter_fever"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="12dp"
+                    android:text="🌡️ Fever/Calving (1)"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="28dp"
+                    app:strokeColor="@color/status_warning"
+                    app:strokeWidth="2dp"
+                    android:backgroundTint="@color/surface_card"
+                    android:textColor="@color/status_warning" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/chip_filter_strayed"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:layout_marginEnd="12dp"
+                    android:text="🏃 Strayed (1)"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="28dp"
+                    app:strokeColor="@color/status_anomaly"
+                    app:strokeWidth="2dp"
+                    android:backgroundTint="@color/surface_card"
+                    android:textColor="@color/status_anomaly" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/chip_quick_log_milk"
+                    style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                    android:layout_width="wrap_content"
+                    android:layout_height="56dp"
+                    android:text="🥛 Log Milk"
+                    android:textAllCaps="false"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    app:cornerRadius="28dp"
+                    app:strokeColor="@color/status_healthy"
+                    app:strokeWidth="2dp"
+                    android:backgroundTint="@color/status_healthy_bg"
+                    android:textColor="@color/status_healthy" />
+            </LinearLayout>
+        </HorizontalScrollView>
 
     </com.google.android.material.appbar.AppBarLayout>
 
@@ -196,7 +370,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:clipToPadding="false"
-                android:padding="12dp"
+                android:padding="14dp"
                 tools:listitem="@layout/item_livestock_node" />
 
             <!-- Empty State / Setup Guide View -->
@@ -217,6 +391,7 @@
                     android:contentDescription="No Data" />
 
                 <TextView
+                    android:id="@+id/tv_empty_title"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="16dp"
@@ -226,6 +401,7 @@
                     android:textStyle="bold" />
 
                 <TextView
+                    android:id="@+id/tv_empty_desc"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="8dp"
@@ -237,11 +413,12 @@
                 <com.google.android.material.button.MaterialButton
                     android:id="@+id/btn_empty_sync"
                     android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
+                    android:layout_height="56dp"
                     android:layout_marginTop="20dp"
-                    android:text="Connect &amp; Sync Gateway"
-                    app:icon="@drawable/ic_sync"
-                    android:backgroundTint="@color/primary_navy" />
+                    android:text="@string/btn_sync_now"
+                    android:textAllCaps="false"
+                    app:cornerRadius="12dp"
+                    android:backgroundTint="@color/cta_sync_teal" />
 
             </LinearLayout>
 

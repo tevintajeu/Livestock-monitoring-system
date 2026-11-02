@@ -1,31 +1,41 @@
 <resources>
-    <string name="app_name">Livestock Vet Monitor</string>
-    <string name="title_dashboard">Livestock Triage Dashboard</string>
-    <string name="title_node_detail">Livestock Biometrics &amp; Telemetry</string>
+    <string name="app_name">MifugoSafe</string>
+    <string name="app_tagline">Smart Herd &amp; Vet Monitor</string>
+    <string name="title_dashboard">MifugoSafe Herd Monitor</string>
+    <string name="title_node_detail">Animal Health &amp; Yield</string>
 
-    <!-- Gateway & Sync -->
-    <string name="gateway_status_connected">Connected to ESP32 Gateway AP</string>
-    <string name="gateway_status_disconnected">Offline / Local Mode</string>
-    <string name="btn_sync_now">Sync Gateway</string>
-    <string name="syncing_data">Syncing telemetry data from ESP32 gateway…</string>
-    <string name="sync_success">Synchronized %1$d telemetry records successfully</string>
-    <string name="sync_failed">Sync Failed: %1$s</string>
-    <string name="default_gateway_url">http://192.168.4.1/data</string>
+    <!-- Gateway & Sync (Human-Centered) -->
+    <string name="gateway_status_connected">Boma Receiver: Ready to Sync</string>
+    <string name="gateway_status_disconnected">Offline Pasture Mode (Saved Data)</string>
+    <string name="btn_sync_now">🔄 Update Herd Status</string>
+    <string name="syncing_data">Checking Boma Receiver for cow updates…</string>
+    <string name="sync_success">Updated %1$d herd health readings from Boma Receiver</string>
+    <string name="sync_failed">Could not reach Boma Receiver: %1$s</string>
+    <string name="default_gateway_url">http://127.0.0.1:8080/data</string>
 
     <!-- Stats & Filters -->
-    <string name="total_nodes_label">Active Nodes</string>
-    <string name="anomaly_nodes_label">Anomalies</string>
-    <string name="normal_nodes_label">Healthy</string>
+    <string name="total_nodes_label">Total Cows</string>
+    <string name="anomaly_nodes_label">Needs Attention</string>
+    <string name="normal_nodes_label">Healthy (Salama)</string>
 
     <!-- Biometrics & Badges -->
-    <string name="status_healthy_badge">HEALTHY</string>
-    <string name="status_anomaly_badge">ANOMALY DETECTED</string>
+    <string name="status_healthy_badge">HEALTHY • SALAMA</string>
+    <string name="status_fever_badge">FEVER ALERT • HOMA</string>
+    <string name="status_calving_badge">CALVING SOON • KUZAA</string>
+    <string name="status_stray_badge">STRAYED • IMETOROKA</string>
+    <string name="status_predator_badge">DANGER • HATARI</string>
+    <string name="status_anomaly_badge">NEEDS ATTENTION</string>
     <string name="temp_unit">°C</string>
-    <string name="fever_alert">FEVER DETECTED (>39.5°C)</string>
-    <string name="motion_alert">HIGH ACCELERATION / DISTRESS</string>
-    <string name="normal_status_desc">Normal biometrics &amp; motion</string>
+    <string name="fever_alert">FEVER DETECTED (&gt;39.5°C)</string>
+    <string name="motion_alert">HIGH MOTION / DISTRESS</string>
+    <string name="normal_status_desc">Grazing calmly • Normal body heat</string>
+
+    <!-- Health-to-Yield Insights -->
+    <string name="yield_fever_warning">⚠️ Fever detected! Expect temporary milk drop. Check udder for mastitis.</string>
+    <string name="yield_calving_warning">🐄 Calving sign detected (&lt;37.8°C)! Prepare clean maternity pen &amp; colostrum care.</string>
+    <string name="yield_normal_status">✅ Milk yield &amp; body heat are in healthy range.</string>
 
     <!-- Empty States -->
-    <string name="empty_records_title">No Telemetry Synced Yet</string>
-    <string name="empty_records_desc">Connect your Android device to the ESP32 Gateway Wi-Fi AP (e.g. \"ESP32_LIVESTOCK_AP\") and tap \"Sync Gateway\" above.</string>
+    <string name="empty_records_title">No Herd Data Found</string>
+    <string name="empty_records_desc">Connect your phone to the Boma Box Wi-Fi (\"ESP32_LIVESTOCK_AP\") and tap \"Update Herd Status\" above, or load sample cows.</string>
 </resources>

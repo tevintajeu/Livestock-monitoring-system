@@ -11,3 +11,5 @@ local.properties
 .vscode/ 
 __pycache__/ 
 *.pyc
+*.log
+start_usb_bridge.bat

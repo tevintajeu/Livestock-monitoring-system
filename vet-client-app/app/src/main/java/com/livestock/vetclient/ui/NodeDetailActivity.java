@@ -1,5 +1,6 @@
 package com.livestock.vetclient.ui;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.text.InputType;
 import android.view.MenuItem;
@@ -101,6 +102,13 @@ public class NodeDetailActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        authManager = new AuthManager(this);
+        if (!authManager.isLoggedIn()) {
+            redirectToLogin();
+            return;
+        }
+
         setContentView(R.layout.activity_node_detail);
 
         nodeId = getIntent().getStringExtra(MainActivity.EXTRA_NODE_ID);
@@ -109,12 +117,31 @@ public class NodeDetailActivity extends AppCompatActivity {
         }
 
         repository = new TelemetryRepository(getApplication());
-        authManager = new AuthManager(this);
 
         initViews();
         setupHistoryRecyclerView();
         setupListeners();
         loadFullNodeDetail();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (authManager == null) {
+            authManager = new AuthManager(this);
+        }
+        if (!authManager.isLoggedIn()) {
+            redirectToLogin();
+            return;
+        }
+        loadFullNodeDetail();
+    }
+
+    private void redirectToLogin() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
     }
 
     private void initViews() {

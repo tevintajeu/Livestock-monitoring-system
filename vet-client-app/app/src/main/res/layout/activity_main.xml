@@ -15,7 +15,7 @@
         android:background="@color/primary_navy"
         android:theme="@style/ThemeOverlay.MaterialComponents.Dark.ActionBar">
 
-        <!-- Custom Top Bar with Role Badge & Quick Switch -->
+        <!-- Custom Top Bar with Brand Title, Secure Role Badge & Dropdown Menu -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
@@ -23,8 +23,8 @@
             android:gravity="center_vertical"
             android:paddingStart="16dp"
             android:paddingTop="12dp"
-            android:paddingEnd="12dp"
-            android:paddingBottom="8dp">
+            android:paddingEnd="8dp"
+            android:paddingBottom="10dp">
 
             <LinearLayout
                 android:layout_width="0dp"
@@ -32,14 +32,16 @@
                 android:layout_weight="1"
                 android:orientation="vertical">
 
-                <androidx.appcompat.widget.Toolbar
-                    android:id="@+id/toolbar"
+                <TextView
+                    android:id="@+id/tv_app_title"
                     android:layout_width="wrap_content"
-                    android:layout_height="32dp"
-                    android:minHeight="32dp"
-                    app:contentInsetStart="0dp"
-                    app:title="MifugoSafe"
-                    app:titleTextColor="@color/white" />
+                    android:layout_height="wrap_content"
+                    android:text="@string/app_name"
+                    android:textColor="@color/white"
+                    android:textSize="20sp"
+                    android:textStyle="bold"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
 
                 <TextView
                     android:id="@+id/tv_app_subtitle"
@@ -47,58 +49,43 @@
                     android:layout_height="wrap_content"
                     android:text="Smart Herd &amp; Vet Monitor • Offline Ready"
                     android:textColor="@color/surface_divider"
-                    android:textSize="11sp" />
+                    android:textSize="11sp"
+                    android:singleLine="true"
+                    android:ellipsize="end" />
             </LinearLayout>
 
-            <!-- 1-Tap Role Switch Badge (Long-press opens Gateway IP Config) -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_role_switch"
+            <!-- Non-Togglable Role Badge: Indicates authenticated persona -->
+            <TextView
+                android:id="@+id/tv_active_role_badge"
                 android:layout_width="wrap_content"
-                android:layout_height="48dp"
-                android:text="👨🏾‍🌾 Mode: Herder"
-                android:textAllCaps="false"
-                android:textSize="12sp"
+                android:layout_height="32dp"
+                android:gravity="center"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
+                android:layout_marginStart="8dp"
+                android:layout_marginEnd="4dp"
+                android:text="🩺 Field Veterinarian"
+                android:textSize="11sp"
                 android:textStyle="bold"
-                app:cornerRadius="24dp"
-                android:backgroundTint="@color/status_healthy"
-                android:textColor="@color/white" />
+                android:textColor="@color/white"
+                android:background="@drawable/bg_role_vet_badge" />
 
-            <!-- Vet IP Settings Button (Visible in Vet Mode) -->
+            <!-- Dropdown Options Menu Button (⋮) -->
             <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_vet_ip_settings"
+                android:id="@+id/btn_menu_dropdown"
                 style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:layout_marginStart="4dp"
-                android:text="⚙️"
-                android:textSize="18sp"
+                android:layout_width="44dp"
+                android:layout_height="44dp"
+                android:padding="0dp"
                 android:insetTop="0dp"
                 android:insetBottom="0dp"
-                android:visibility="gone"
-                tools:visibility="visible" />
-
-            <!-- Wipe / Clean Slate Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_clear_all_cows"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:text="🗑️"
-                android:textSize="16sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp"
-                android:contentDescription="Clear All Animals" />
-
-            <!-- Lock / Switch PIN Screen Button -->
-            <com.google.android.material.button.MaterialButton
-                android:id="@+id/btn_lock_session"
-                style="@style/Widget.MaterialComponents.Button.TextButton"
-                android:layout_width="48dp"
-                android:layout_height="48dp"
-                android:text="🔒"
-                android:textSize="16sp"
-                android:insetTop="0dp"
-                android:insetBottom="0dp" />
+                android:insetLeft="0dp"
+                android:insetRight="0dp"
+                android:text="⋮"
+                android:textSize="22sp"
+                android:textStyle="bold"
+                android:textColor="@color/white"
+                android:contentDescription="Options Menu" />
         </LinearLayout>
 
         <!-- Guided "Boma Box" Sync Banner Card -->

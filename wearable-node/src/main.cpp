@@ -1,46 +1,73 @@
 #include <Adafruit_MPU6050.h>
 #include <Adafruit_Sensor.h>
 #include <DallasTemperature.h>
+#include <LoRa.h>
 #include <OneWire.h>
-#include <Preferences.h> // Built-in ESP32 NVS Flash storage for Objective 2
+#include <Preferences.h>
 #include <PubSubClient.h>
 #include <WiFi.h>
 #include <Wire.h>
 
+// --- PIN DEFINITIONS (COLLAR NODE) ---
 #define ONE_WIRE_BUS 4
 #define DISTANCE_PIN 34
+
+// LoRa SX1278 (Ra-01 433MHz) Pins
+#define LORA_CS 5
+#define LORA_RST 14
+#define LORA_DIO0 26
 
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 Adafruit_MPU6050 mpu;
-Preferences flashStorage; // Non-volatile flash fallback
+Preferences flashStorage;
 
-const char *ssid = "Wokwi-GUEST";
-const char *password = "";
+// --- Wi-Fi & MQTT Configuration ---
+const char *ssid = "Kiten-sdu n";
+const char *password = "ARunke@123";
 const char *mqtt_server = "broker.hivemq.com";
 const char *mqtt_topic = "capstone/livestock/telemetry";
-const char *client_id = "Node_TX_TevinTajeu_1026";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
+String clientId;
 
-// --- SENSOR CALIBRATION & SMOOTHING GLOBALS ---
-float smoothedTemp = 38.5; // Normal bovine baseline (°C)
-const float EMA_ALPHA =
-    0.6; // Smoothing weight (reacts quickly in Wokwi while filtering spikes)
+// --- SENSOR & HARDWARE STATUS GLOBALS ---
+bool mpuReady = false;
+bool loraReady = false;
+float smoothedTemp = 38.5; // Baseline bovine temp (°C)
+const float EMA_ALPHA = 0.6;
 bool isFirstReading = true;
+unsigned long lastMqttRetry = 0;
 
-// 1. Exponential Moving Average (EMA) Temperature Filter (Proposal Section 1.7)
+// Scan I2C bus to detect connected devices (MPU6050/6500)
+void scanI2CDevices() {
+  Serial.println("[I2C SCAN] Scanning I2C bus (SDA=21, SCL=22)...");
+  byte count = 0;
+  for (byte i = 8; i < 120; i++) {
+    Wire.beginTransmission(i);
+    if (Wire.endTransmission() == 0) {
+      Serial.print(" -> Found device at 0x");
+      if (i < 16) Serial.print("0");
+      Serial.println(i, HEX);
+      count++;
+    }
+  }
+  if (count == 0) {
+    Serial.println(" -> No I2C devices responded. Check MPU VCC/GND/SDA/SCL wiring.");
+  }
+}
+
+// 1. Temperature Filter (EMA) with Disconnect Guard
 float readFilteredTemperature() {
   sensors.requestTemperatures();
   float rawTemp = sensors.getTempCByIndex(0);
 
-  // Reject hardware disconnect or CRC error values (-127C or +85C)
-  if (rawTemp <= -50.0 || rawTemp == 85.0) {
+  // Reject hardware disconnect (-127C) or power-on default (+85C)
+  if (rawTemp <= -50.0 || rawTemp == 85.0 || rawTemp == DEVICE_DISCONNECTED_C) {
     return smoothedTemp;
   }
 
-  // Seed filter on boot so it immediately matches the Wokwi slider position
   if (isFirstReading) {
     smoothedTemp = rawTemp;
     isFirstReading = false;
@@ -50,37 +77,33 @@ float readFilteredTemperature() {
   return smoothedTemp;
 }
 
-// 2. 3-Axis Gravity-Compensated Dynamic Acceleration (Proposal Section 1.6)
+// 2. 3-Axis Gravity-Compensated Dynamic Acceleration
 float calculateDynamicAcceleration(float ax, float ay, float az) {
   float totalMagnitude = sqrt((ax * ax) + (ay * ay) + (az * az));
-  // Subtract Earth's 9.81 m/s^2 gravity so resting/tilting neck doesn't trigger
-  // false alerts
   return fabs(totalMagnitude - 9.81);
 }
 
-// 3. Flash Memory Fallback Archiver (Proposal Specific Objective 2)
+// 3. Flash Memory Fallback Archiver
 void saveToFlashFallback(String payload) {
   flashStorage.begin("telemetry_bak", false);
   int count = flashStorage.getInt("count", 0);
-  if (count < 20) { // Store up to 20 backlogged packets in NVS Flash
+  if (count < 20) {
     String key = "pkt_" + String(count);
     flashStorage.putString(key.c_str(), payload);
     flashStorage.putInt("count", count + 1);
-    Serial.println("[FLASH FALLBACK] Link down! Saved packet #" +
-                   String(count + 1) + " to NVS: " + payload);
+    Serial.println("[FLASH FALLBACK] Offline: Saved packet #" + String(count + 1) + " to NVS: " + payload);
   } else {
     Serial.println("[FLASH FALLBACK] NVS buffer full!");
   }
   flashStorage.end();
 }
 
-// 4. Auto-Stream Backlogged Frames on Reconnect (Proposal Specific Objective 2)
+// 4. Auto-Stream Backlogged Packets on Reconnect
 void flushFlashBacklog() {
   flashStorage.begin("telemetry_bak", false);
   int count = flashStorage.getInt("count", 0);
   if (count > 0) {
-    Serial.println("[FLASH FALLBACK] Link restored! Streaming " +
-                   String(count) + " backlogged packets...");
+    Serial.println("[FLASH FALLBACK] Reconnected! Flushing " + String(count) + " backlogged packets...");
     for (int i = 0; i < count; i++) {
       String key = "pkt_" + String(i);
       String savedPayload = flashStorage.getString(key.c_str(), "");
@@ -90,50 +113,103 @@ void flushFlashBacklog() {
         delay(100);
       }
     }
-    flashStorage.clear(); // Wipe backlog after successful transmission
+    flashStorage.clear();
   }
   flashStorage.end();
 }
 
+// 5. Non-Blocking Wi-Fi Setup with Timeout
 void setup_wifi() {
-  Serial.print("Connecting to WiFi...");
+  Serial.println("\n[WIFI] Connecting to SSID: " + String(ssid));
+  WiFi.mode(WIFI_STA);
   WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
+
+  unsigned long startAttempt = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 15000) {
     delay(500);
     Serial.print(".");
   }
-  Serial.println(" Connected!");
+
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n[WIFI] Connected! IP Address: " + WiFi.localIP().toString());
+  } else {
+    Serial.println("\n[WIFI WARN] Connection timed out. Will retry in background loop.");
+  }
 }
 
+// 6. Non-Blocking MQTT Reconnect
 void reconnect_mqtt() {
-  // Non-blocking single reconnect attempt so the node never freezes if offline
-  if (!client.connected()) {
-    Serial.print("Attempting MQTT connection...");
-    if (client.connect(client_id)) {
-      Serial.println(" Connected to HiveMQ!");
-      flushFlashBacklog(); // Stream any offline packets saved in flash
+  if (WiFi.status() != WL_CONNECTED) {
+    if (millis() - lastMqttRetry > 5000) {
+      lastMqttRetry = millis();
+      WiFi.reconnect();
+    }
+    return;
+  }
+
+  if (!client.connected() && (millis() - lastMqttRetry > 3000)) {
+    lastMqttRetry = millis();
+    Serial.print("[MQTT] Connecting to broker.hivemq.com (Client ID: " + clientId + ")...");
+    if (client.connect(clientId.c_str())) {
+      Serial.println(" CONNECTED!");
+      flushFlashBacklog();
     } else {
-      Serial.println(" Offline (rc=" + String(client.state()) +
-                     "). Using local NVS Flash Fallback.");
+      Serial.println(" Failed (rc=" + String(client.state()) + "). Fallback to NVS.");
     }
   }
 }
 
 void setup() {
   Serial.begin(115200);
-  Wire.begin(21, 22);
+  delay(1000);
+  Serial.println("\n=========================================");
+  Serial.println("   LIVESTOCK WEARABLE NODE INITIALIZING   ");
+  Serial.println("=========================================");
 
+  // Unique MQTT client ID to prevent broker collisions
+  clientId = "Node_TX_" + String((uint32_t)ESP.getEfuseMac(), HEX);
+
+  // Initialize I2C Bus on GPIO 21 (SDA) and GPIO 22 (SCL)
+  Wire.begin(21, 22);
+  scanI2CDevices();
+
+  // Initialize Temperature Sensor (DS18B20 on GPIO 4)
+  sensors.begin();
+  Serial.println("[INIT] DS18B20 Temperature bus started on GPIO 4");
+
+  // Initialize IMU (MPU6050/MPU6500) - Try 0x68, then 0x69
+  if (mpu.begin(0x68, &Wire)) {
+    Serial.println("[INIT OK] MPU6050/6500 initialized at 0x68.");
+    mpuReady = true;
+  } else if (mpu.begin(0x69, &Wire)) {
+    Serial.println("[INIT OK] MPU6050/6500 initialized at 0x69.");
+    mpuReady = true;
+  } else {
+    Serial.println("[INIT WARN] MPU not detected. Continuing with 0.0 m/s^2 baseline.");
+    mpuReady = false;
+  }
+
+  // Potentiometer on GPIO 34
+  pinMode(DISTANCE_PIN, INPUT);
+  Serial.println("[INIT] Geofence Potentiometer on GPIO 34 (ADC1)");
+
+  // Initialize 433 MHz LoRa Radio (Ra-01 / SX1278)
+  LoRa.setPins(LORA_CS, LORA_RST, LORA_DIO0);
+  if (!LoRa.begin(433E6)) {
+    Serial.println("[INIT WARN] Ra-01 LoRa not detected on 433MHz (Check CS=5, RST=14, DIO0=26, 3.3V).");
+    loraReady = false;
+  } else {
+    Serial.println("[INIT OK] Ra-01 LoRa 433 MHz initialized successfully!");
+    LoRa.setTxPower(17);
+    loraReady = true;
+  }
+
+  // Wi-Fi & MQTT
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setKeepAlive(60);
 
-  sensors.begin();
-  if (!mpu.begin()) {
-    Serial.println("MPU6050 Failed to initialize");
-    while (1)
-      ;
-  }
-  Serial.println("Wearable Collar Node Initialized.");
+  Serial.println("[READY] Wearable Collar Node initialized.\n");
 }
 
 void loop() {
@@ -142,51 +218,54 @@ void loop() {
   }
   client.loop();
 
-  // 1. Read & Smooth Biometrics
+  // 1. Read Sensors
   float temp = readFilteredTemperature();
   int rawValue = analogRead(DISTANCE_PIN);
   int distance = map(rawValue, 0, 4095, 0, 1000);
 
-  sensors_event_t a, g, temp_event;
-  mpu.getEvent(&a, &g, &temp_event);
-  float dynamicAccel = calculateDynamicAcceleration(
-      a.acceleration.x, a.acceleration.y, a.acceleration.z);
-
-  // 2. Evaluate Anomaly Logic (Fever > 39.5C, Pre-Calving Drop < 37.8C,
-  // Predator Motion > 14.0 m/s^2, or Stray > 500m)
-  // 2. Evaluate Anomaly Logic (Distinct Flags 1, 2, and 3)
-  int anomalyFlag = 0;
-  if (dynamicAccel > 14.0) {
-    anomalyFlag =
-        3; // Flag 3: Predator / Theft Motion Spike (150ms Red+Amber Strobe)
-  } else if (distance > 500) {
-    anomalyFlag = 2; // Flag 2: Geofence Stray Alert (400ms Red Blink)
-  } else if (temp > 39.5 || (temp < 37.8 && temp > 35.0)) {
-    anomalyFlag =
-        1; // Flag 1: Health Alert - Fever or Calving Drop (800ms Amber Pulse)
+  float dynamicAccel = 0.0;
+  if (mpuReady) {
+    sensors_event_t a, g, temp_event;
+    mpu.getEvent(&a, &g, &temp_event);
+    dynamicAccel = calculateDynamicAcceleration(a.acceleration.x, a.acceleration.y, a.acceleration.z);
   }
 
-  // 3. Construct 5-Field CSV Payload
-  // (NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG)
+  // 2. Evaluate Anomaly Logic
+  // Flag 1 = Health (fever >39.5C or drop <37.8C), Flag 2 = Stray (>500m), Flag 3 = Predator (>14.0 m/s^2)
+  int anomalyFlag = 0;
+  if (dynamicAccel > 14.0) {
+    anomalyFlag = 3;
+  } else if (distance > 500) {
+    anomalyFlag = 2;
+  } else if (temp > 39.5 || (temp < 37.8 && temp > 35.0)) {
+    anomalyFlag = 1;
+  }
+
+  // 3. Construct 5-Field CSV Payload: NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
   String payload = "NODE_001," + String(temp, 2) + "," +
                    String(dynamicAccel, 2) + "," + String(distance) + "," +
                    String(anomalyFlag);
 
-  // 4. Event-Driven Transmission with Offline Flash Fallback
-  if (anomalyFlag > 0) {
-    if (client.connected()) {
-      client.publish(mqtt_topic, payload.c_str());
-      Serial.println("[ALERT TRANSMITTED] " + payload);
-    } else {
-      saveToFlashFallback(payload);
-    }
-  } else {
-    Serial.println("[NORMAL - SLEEP] Temp: " + String(temp, 1) +
-                   "C | DynAccel: " + String(dynamicAccel, 1) +
-                   "m/s2 | Dist: " + String(distance) + "m");
+  // 4A. Broadcast over 433 MHz LoRa (if module is attached)
+  if (loraReady) {
+    LoRa.beginPacket();
+    LoRa.print(payload);
+    LoRa.endPacket();
+    Serial.println("[LORA TX 433MHz] " + payload);
   }
 
-  // 5. Non-Blocking 2.5-Second Sampling Timer (Fixes HiveMQ flooding)
+  // 4B. Stream to HiveMQ Cloud MQTT Broker
+  if (client.connected()) {
+    client.publish(mqtt_topic, payload.c_str());
+    Serial.println("[HIVEMQ TX] " + payload + (anomalyFlag > 0 ? " [ALERT TRIGGERED!]" : " [NORMAL]"));
+  } else {
+    Serial.println("[OFFLINE] " + payload);
+    if (anomalyFlag > 0) {
+      saveToFlashFallback(payload);
+    }
+  }
+
+  // 5. Non-Blocking 2.5-Second Sampling Delay
   unsigned long start = millis();
   while (millis() - start < 2500) {
     client.loop();

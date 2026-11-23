@@ -7,10 +7,17 @@ and serves them via HTTP GET /data to the Android MifugoSafe phone app.
 NO FAKE COWS: Only streams the real node(s) actively transmitting from Wokwi!
 """
 
+import sys
 import threading
 import time
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import paho.mqtt.client as mqtt
+
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 
 PORT = 8080
 MQTT_BROKER = "broker.hivemq.com"
@@ -33,7 +40,7 @@ def on_connect(client, userdata, flags, rc, *args):
 def on_message(client, userdata, msg):
     try:
         raw_payload = msg.payload.decode("utf-8").strip()
-        print(f"\n[📡 Wokwi MQTT Received] {raw_payload}")
+        print(f"\n[Wokwi MQTT Received] {raw_payload}")
 
         parts = [p.strip() for p in raw_payload.split(",")]
         # Supported format: NODE_ID, TEMP, DYNAMIC_ACCEL, DISTANCE, ANOMALY_FLAG
@@ -78,7 +85,7 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
             self.end_headers()
             self.wfile.write(csv_output.encode("utf-8"))
 
-            print(f"\n[📱 Phone Sync] Dispatched {record_count} real record(s) to phone at {self.client_address[0]}")
+            print(f"\n[Phone Sync] Dispatched {record_count} real record(s) to phone at {self.client_address[0]}")
             if record_count == 0:
                 print("   (Note: Wokwi has not published any readings yet. Start your Wokwi simulation!)")
 
@@ -89,7 +96,7 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
             self.send_response(200)
             self.end_headers()
             self.wfile.write(b"Buffer Cleared OK\n")
-            print("\n[🧹 Cleared] Telemetry buffer reset to 0 records.")
+            print("\n[Cleared] Telemetry buffer reset to 0 records.")
         else:
             self.send_response(404)
             self.end_headers()
@@ -114,10 +121,10 @@ def start_mqtt_client():
 
 if __name__ == "__main__":
     print("=" * 70)
-    print("🚀 MifugoSafe Real Wokwi Bridge Server")
-    print(f"📡 Subscribing to: {MQTT_BROKER} -> '{MQTT_TOPIC}'")
-    print(f"🌐 Serving HTTP endpoint: http://0.0.0.0:{PORT}/data")
-    print("❌ Fake/Imaginary cows removed. Only streams your REAL simulation!")
+    print("[*] MifugoSafe Real Wokwi Bridge Server")
+    print(f"[*] Subscribing to: {MQTT_BROKER} -> '{MQTT_TOPIC}'")
+    print(f"[*] Serving HTTP endpoint: http://0.0.0.0:{PORT}/data")
+    print("[*] Only streaming real simulation data from Wokwi!")
     print("=" * 70)
 
     mqtt_thread = threading.Thread(target=start_mqtt_client, daemon=True)
@@ -128,3 +135,5 @@ if __name__ == "__main__":
         httpd.serve_forever()
     except KeyboardInterrupt:
         print("\nStopping server...")
+sa\
+    

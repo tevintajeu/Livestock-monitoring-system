@@ -48,25 +48,62 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="4dp"
-            android:text="100% Offline Boma Security • Select Your Role"
+            android:text="Offline Security &amp; Access Control"
             android:textColor="@color/text_secondary"
             android:textSize="13sp"
             android:gravity="center" />
 
-        <!-- Role Selector Segmented Buttons (Fitts's Law >= 56dp height) -->
+        <!-- Segmented Tab: Log In vs Sign Up / Register -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:orientation="horizontal"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_metric_pill"
+            android:padding="3dp">
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/tab_mode_login"
+                style="@style/Widget.MaterialComponents.Button.UnelevatedButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="🔒 Log In"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="8dp"
+                android:backgroundTint="@color/primary_navy"
+                android:textColor="@color/white" />
+
+            <com.google.android.material.button.MaterialButton
+                android:id="@+id/tab_mode_signup"
+                style="@style/Widget.MaterialComponents.Button.TextButton"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:text="📝 Sign Up / Register"
+                android:textAllCaps="false"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                app:cornerRadius="8dp"
+                android:textColor="@color/text_secondary" />
+        </LinearLayout>
+
+        <!-- Role Selector Segmented Buttons -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:layout_marginTop="16dp">
+            android:layout_marginTop="14dp">
 
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_role_farmer"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
+                android:layout_height="52dp"
                 android:layout_weight="1"
                 android:layout_marginEnd="6dp"
-                android:text="👨🏾‍🌾 Cow Owner / Herder"
+                android:text="👨🏾‍🌾 Herder Mode"
                 android:textAllCaps="false"
                 android:textSize="13sp"
                 android:textStyle="bold"
@@ -77,10 +114,10 @@
             <com.google.android.material.button.MaterialButton
                 android:id="@+id/btn_role_vet"
                 android:layout_width="0dp"
-                android:layout_height="56dp"
+                android:layout_height="52dp"
                 android:layout_weight="1"
                 android:layout_marginStart="6dp"
-                android:text="🩺 Field Veterinarian"
+                android:text="🩺 Veterinarian"
                 android:textAllCaps="false"
                 android:textSize="13sp"
                 android:textStyle="bold"
@@ -105,344 +142,415 @@
             android:textStyle="bold"
             android:gravity="center" />
 
-        <!-- 4-Digit M-Pesa Style PIN Entry Card -->
-        <com.google.android.material.card.MaterialCardView
+        <!-- 1. LOGIN CONTAINER -->
+        <LinearLayout
+            android:id="@+id/layout_login_container"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardCornerRadius="16dp"
-            app:cardElevation="2dp"
-            app:cardBackgroundColor="@color/surface_card"
-            app:strokeColor="@color/surface_divider"
-            app:strokeWidth="1dp">
+            android:orientation="vertical"
+            android:layout_marginTop="12dp">
 
-            <LinearLayout
+            <!-- Brute-Force Lockout Countdown Warning Banner -->
+            <TextView
+                android:id="@+id/tv_lockout_warning"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:gravity="center_horizontal"
-                android:padding="16dp">
+                android:layout_marginBottom="10dp"
+                android:padding="12dp"
+                android:background="@drawable/bg_summary_danger"
+                android:text="⛔ Keypad locked due to failed attempts. Try again in 30s"
+                android:textColor="@color/status_anomaly"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:gravity="center"
+                android:visibility="gone" />
 
-                <TextView
-                    android:id="@+id/tv_pin_prompt"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="Enter 4-Digit Herder PIN"
-                    android:textColor="@color/text_primary"
-                    android:textSize="15sp"
-                    android:textStyle="bold" />
-
-                <!-- 4 Tactile PIN Dots -->
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center"
-                    android:layout_marginTop="12dp"
-                    android:layout_marginBottom="16dp">
-
-                    <View
-                        android:id="@+id/pin_dot_1"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginEnd="18dp"
-                        android:background="@drawable/pin_dot_empty" />
-
-                    <View
-                        android:id="@+id/pin_dot_2"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginEnd="18dp"
-                        android:background="@drawable/pin_dot_empty" />
-
-                    <View
-                        android:id="@+id/pin_dot_3"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:layout_marginEnd="18dp"
-                        android:background="@drawable/pin_dot_empty" />
-
-                    <View
-                        android:id="@+id/pin_dot_4"
-                        android:layout_width="22dp"
-                        android:layout_height="22dp"
-                        android:background="@drawable/pin_dot_empty" />
-                </LinearLayout>
-
-                <!-- Numeric Keypad (56dp minimum height, 12dp spacing) -->
-                <!-- Row 1: 1, 2, 3 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_1"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="1"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_2"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="2"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_3"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:text="3"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-                </LinearLayout>
-
-                <!-- Row 2: 4, 5, 6 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_4"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="4"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_5"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="5"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_6"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:text="6"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-                </LinearLayout>
-
-                <!-- Row 3: 7, 8, 9 -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:layout_marginBottom="12dp">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_7"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="7"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_8"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="8"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_9"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:text="9"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-                </LinearLayout>
-
-                <!-- Row 4: Clear, 0, Unlock -->
-                <LinearLayout
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:orientation="horizontal">
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_clear"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="Clear"
-                        android:textAllCaps="false"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/status_anomaly"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/status_anomaly_border" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_0"
-                        style="@style/Widget.MaterialComponents.Button.OutlinedButton"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:layout_marginEnd="12dp"
-                        android:text="0"
-                        android:textSize="20sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/text_primary"
-                        app:cornerRadius="12dp"
-                        app:strokeColor="@color/surface_divider" />
-
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/btn_pin_unlock"
-                        android:layout_width="0dp"
-                        android:layout_height="56dp"
-                        android:layout_weight="1"
-                        android:text="Unlock"
-                        android:textAllCaps="false"
-                        android:textSize="14sp"
-                        android:textStyle="bold"
-                        android:textColor="@color/white"
-                        android:backgroundTint="@color/status_healthy"
-                        app:cornerRadius="12dp" />
-                </LinearLayout>
-
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
-
-        <!-- Demo Quick Login Toggle & Instant Access Card for Academic Presentations -->
-        <com.google.android.material.card.MaterialCardView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="14dp"
-            app:cardCornerRadius="12dp"
-            app:cardElevation="1dp"
-            app:cardBackgroundColor="@color/surface_card"
-            app:strokeColor="@color/surface_divider"
-            app:strokeWidth="1dp">
-
-            <LinearLayout
+            <!-- 4-Digit PIN Entry Card -->
+            <com.google.android.material.card.MaterialCardView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:orientation="vertical"
-                android:padding="12dp">
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:strokeColor="@color/surface_divider"
+                app:strokeWidth="1dp">
 
                 <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:orientation="horizontal"
-                    android:gravity="center_vertical">
+                    android:orientation="vertical"
+                    android:gravity="center_horizontal"
+                    android:padding="16dp">
 
-                    <LinearLayout
-                        android:layout_width="0dp"
+                    <TextView
+                        android:id="@+id/tv_pin_prompt"
+                        android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:layout_weight="1"
-                        android:orientation="vertical">
+                        android:text="Enter 4-Digit Herder PIN"
+                        android:textColor="@color/text_primary"
+                        android:textSize="15sp"
+                        android:textStyle="bold" />
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="⚡ Demo Quick Login"
-                            android:textColor="@color/text_primary"
-                            android:textSize="14sp"
-                            android:textStyle="bold" />
+                    <!-- 4 Tactile PIN Dots -->
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center"
+                        android:layout_marginTop="12dp"
+                        android:layout_marginBottom="16dp">
 
-                        <TextView
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="1-tap bypass for live academic defense testing"
-                            android:textColor="@color/text_muted"
-                            android:textSize="11sp" />
+                        <View
+                            android:id="@+id/pin_dot_1"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginEnd="18dp"
+                            android:background="@drawable/pin_dot_empty" />
+
+                        <View
+                            android:id="@+id/pin_dot_2"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginEnd="18dp"
+                            android:background="@drawable/pin_dot_empty" />
+
+                        <View
+                            android:id="@+id/pin_dot_3"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:layout_marginEnd="18dp"
+                            android:background="@drawable/pin_dot_empty" />
+
+                        <View
+                            android:id="@+id/pin_dot_4"
+                            android:layout_width="22dp"
+                            android:layout_height="22dp"
+                            android:background="@drawable/pin_dot_empty" />
                     </LinearLayout>
 
-                    <com.google.android.material.switchmaterial.SwitchMaterial
-                        android:id="@+id/switch_demo_quick_login"
-                        android:layout_width="wrap_content"
-                        android:layout_height="48dp" />
+                    <!-- Numeric Keypad -->
+                    <!-- Row 1: 1, 2, 3 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_1"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="1"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_2"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="2"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_3"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:text="3"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+                    </LinearLayout>
+
+                    <!-- Row 2: 4, 5, 6 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_4"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="4"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_5"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="5"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_6"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:text="6"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+                    </LinearLayout>
+
+                    <!-- Row 3: 7, 8, 9 -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_7"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="7"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_8"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="8"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_9"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:text="9"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+                    </LinearLayout>
+
+                    <!-- Row 4: Clear, 0, Unlock -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal">
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_clear"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="Clear"
+                            android:textAllCaps="false"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/status_anomaly"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/status_anomaly_border" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_0"
+                            style="@style/Widget.MaterialComponents.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:layout_marginEnd="12dp"
+                            android:text="0"
+                            android:textSize="20sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/text_primary"
+                            app:cornerRadius="12dp"
+                            app:strokeColor="@color/surface_divider" />
+
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/btn_pin_unlock"
+                            android:layout_width="0dp"
+                            android:layout_height="56dp"
+                            android:layout_weight="1"
+                            android:text="Unlock"
+                            android:textAllCaps="false"
+                            android:textSize="14sp"
+                            android:textStyle="bold"
+                            android:textColor="@color/white"
+                            android:backgroundTint="@color/status_healthy"
+                            app:cornerRadius="12dp" />
+                    </LinearLayout>
+
                 </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
 
-                <com.google.android.material.button.MaterialButton
-                    android:id="@+id/btn_demo_instant_enter"
+        <!-- 2. SIGN UP / REGISTRATION CONTAINER -->
+        <LinearLayout
+            android:id="@+id/layout_signup_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:layout_marginTop="12dp"
+            android:visibility="gone">
+
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                app:cardCornerRadius="16dp"
+                app:cardElevation="2dp"
+                app:cardBackgroundColor="@color/surface_card"
+                app:strokeColor="@color/surface_divider"
+                app:strokeWidth="1dp">
+
+                <LinearLayout
                     android:layout_width="match_parent"
-                    android:layout_height="56dp"
-                    android:layout_marginTop="8dp"
-                    android:text="⚡ Instant Demo Login (Enter Selected Role)"
-                    android:textAllCaps="false"
-                    android:textSize="13sp"
-                    android:textStyle="bold"
-                    app:cornerRadius="10dp"
-                    android:backgroundTint="@color/primary_navy"
-                    android:textColor="@color/white" />
-            </LinearLayout>
-        </com.google.android.material.card.MaterialCardView>
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:padding="20dp">
 
-        <!-- Default PIN Hint at Bottom -->
+                    <TextView
+                        android:id="@+id/tv_signup_heading"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Register Profile &amp; PIN"
+                        android:textColor="@color/text_primary"
+                        android:textSize="16sp"
+                        android:textStyle="bold" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:text="Set up your offline profile credentials for this role."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <!-- Name / Clinic Title -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_signup_name"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:hint="Full Name or Clinic/Farm Title">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_signup_name"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="textPersonName|textCapWords"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- 4-Digit Security PIN -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_signup_pin"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:passwordToggleEnabled="true"
+                        android:hint="Create 4-Digit PIN">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_signup_pin"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberPassword"
+                            android:maxLength="4"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Confirm 4-Digit Security PIN -->
+                    <com.google.android.material.textfield.TextInputLayout
+                        android:id="@+id/til_signup_confirm_pin"
+                        style="@style/Widget.MaterialComponents.TextInputLayout.OutlinedBox"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="12dp"
+                        app:passwordToggleEnabled="true"
+                        android:hint="Confirm 4-Digit PIN">
+
+                        <com.google.android.material.textfield.TextInputEditText
+                            android:id="@+id/et_signup_confirm_pin"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:inputType="numberPassword"
+                            android:maxLength="4"
+                            android:maxLines="1" />
+                    </com.google.android.material.textfield.TextInputLayout>
+
+                    <!-- Register CTA Button -->
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/btn_signup_submit"
+                        android:layout_width="match_parent"
+                        android:layout_height="56dp"
+                        android:layout_marginTop="20dp"
+                        android:text="Register Profile &amp; Sign In"
+                        android:textAllCaps="false"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        app:cornerRadius="12dp"
+                        android:backgroundTint="@color/status_healthy"
+                        android:textColor="@color/white" />
+
+                </LinearLayout>
+            </com.google.android.material.card.MaterialCardView>
+        </LinearLayout>
+
+        <!-- Security Footer Hint -->
         <TextView
             android:id="@+id/tv_pin_hint"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:layout_marginBottom="8dp"
-            android:text="Default Testing PINs — Farmer PIN: 1234  |  Vet PIN: 9999"
+            android:layout_marginTop="18dp"
+            android:layout_marginBottom="12dp"
+            android:text="🔒 Salted SHA-256 Offline Security • Herder PIN: 1234 | Vet PIN: 9999"
             android:textColor="@color/text_muted"
             android:textSize="12sp"
             android:textStyle="bold"
@@ -450,4 +558,3 @@
 
     </LinearLayout>
 </ScrollView>
-

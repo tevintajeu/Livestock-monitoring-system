@@ -6,6 +6,8 @@ import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.os.Bundle;
 import android.text.InputType;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
@@ -16,6 +18,7 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -82,10 +85,8 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
     private TextView tvBomaBoxStatus;
 
     // Role & Settings Controls
-    private MaterialButton btnRoleSwitch;
-    private View btnVetIpSettings;
-    private View btnClearAllCows;
-    private View btnLockSession;
+    private TextView tvActiveRoleBadge;
+    private View btnMenuDropdown;
 
     // Filter Chips
     private MaterialButton chipFilterAll;
@@ -102,11 +103,17 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        authManager = new AuthManager(this);
+        if (!authManager.isLoggedIn()) {
+            redirectToLogin();
+            return;
+        }
+
         setContentView(R.layout.activity_main);
 
         repository = new TelemetryRepository(getApplication());
         syncClient = new Esp32SyncClient();
-        authManager = new AuthManager(this);
 
         initViews();
         setupRecyclerView();
@@ -118,14 +125,25 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
     @Override
     protected void onResume() {
         super.onResume();
+        if (authManager == null) {
+            authManager = new AuthManager(this);
+        }
+        if (!authManager.isLoggedIn()) {
+            redirectToLogin();
+            return;
+        }
         applyRoleUiState();
         refreshDashboardFromLocalDb();
     }
 
-    private void initViews() {
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        setSupportActionBar(toolbar);
+    private void redirectToLogin() {
+        Intent intent = new Intent(this, LoginActivity.class);
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK);
+        startActivity(intent);
+        finish();
+    }
 
+    private void initViews() {
         swipeRefreshLayout = findViewById(R.id.swipe_refresh_layout);
         recyclerViewNodes = findViewById(R.id.recycler_livestock_nodes);
         layoutEmptyState = findViewById(R.id.layout_empty_state);
@@ -136,10 +154,8 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
         tvGatewayEndpoint = findViewById(R.id.tv_gateway_endpoint);
         tvBomaBoxStatus = findViewById(R.id.tv_boma_box_status);
 
-        btnRoleSwitch = findViewById(R.id.btn_role_switch);
-        btnVetIpSettings = findViewById(R.id.btn_vet_ip_settings);
-        btnClearAllCows = findViewById(R.id.btn_clear_all_cows);
-        btnLockSession = findViewById(R.id.btn_lock_session);
+        tvActiveRoleBadge = findViewById(R.id.tv_active_role_badge);
+        btnMenuDropdown = findViewById(R.id.btn_menu_dropdown);
 
         chipFilterAll = findViewById(R.id.chip_filter_all);
         chipFilterAttention = findViewById(R.id.chip_filter_attention);
@@ -174,38 +190,24 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
             helpBtn.setOnClickListener(v -> showBomaConnectionHelpDialog());
         }
 
-        // 1-Tap Role Switch (and long-press for IP Config)
-        btnRoleSwitch.setOnClickListener(v -> {
-            authManager.toggleRole();
-            applyRoleUiState();
-            applyFilterAndRender();
-            Toast.makeText(this, "Switched to " + authManager.getRoleDisplayName(), Toast.LENGTH_SHORT).show();
-        });
-        btnRoleSwitch.setOnLongClickListener(v -> {
-            showGatewayConfigDialog();
-            return true;
-        });
-
-        // Vet IP Config Gear Button
-        if (btnVetIpSettings != null) {
-            btnVetIpSettings.setOnClickListener(v -> showGatewayConfigDialog());
+        // Options Dropdown Menu (Log Out, IP Settings, Wipe Data, Help)
+        if (btnMenuDropdown != null) {
+            btnMenuDropdown.setOnClickListener(this::showOptionsMenu);
         }
+
+        // Informative Tap on Role Badge
+        if (tvActiveRoleBadge != null) {
+            tvActiveRoleBadge.setOnClickListener(v -> {
+                String roleInfo = authManager.isVetMode() ? "Field Veterinarian" : "Cow Owner / Herder";
+                Toast.makeText(this, "Authenticated as " + authManager.getActiveDisplayName() + " (" + roleInfo + ")", Toast.LENGTH_SHORT).show();
+            });
+        }
+
         if (tvGatewayEndpoint != null) {
-            tvGatewayEndpoint.setOnClickListener(v -> showGatewayConfigDialog());
-        }
-
-        // Clean Slate / Clear All Animals Button
-        if (btnClearAllCows != null) {
-            btnClearAllCows.setOnClickListener(v -> confirmClearAllCows());
-        }
-
-        // Lock Session -> Return to PIN & Role Login Screen
-        if (btnLockSession != null) {
-            btnLockSession.setOnClickListener(v -> {
-                authManager.logout();
-                Intent intent = new Intent(this, LoginActivity.class);
-                startActivity(intent);
-                finish();
+            tvGatewayEndpoint.setOnClickListener(v -> {
+                if (authManager.isVetMode()) {
+                    showGatewayConfigDialog();
+                }
             });
         }
 
@@ -234,17 +236,15 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
      */
     private void applyRoleUiState() {
         boolean isVet = authManager.isVetMode();
-        btnRoleSwitch.setText(authManager.getRoleBadgeLabel());
-
-        int badgeBg = ContextCompat.getColor(this, isVet ? R.color.primary_light : R.color.status_healthy);
-        btnRoleSwitch.setBackgroundTintList(ColorStateList.valueOf(badgeBg));
+        if (tvActiveRoleBadge != null) {
+            tvActiveRoleBadge.setText(authManager.getRoleBadgeLabel());
+            tvActiveRoleBadge.setBackgroundResource(isVet ? R.drawable.bg_role_vet_badge : R.drawable.bg_role_farmer_badge);
+        }
 
         if (isVet) {
-            btnVetIpSettings.setVisibility(View.VISIBLE);
             tvGatewayEndpoint.setVisibility(View.VISIBLE);
             tvBomaBoxStatus.setText("Boma Gateway Receiver (Vet Clinical Mode)");
         } else {
-            btnVetIpSettings.setVisibility(View.GONE);
             tvGatewayEndpoint.setVisibility(View.GONE);
             tvBomaBoxStatus.setText("Boma Receiver: Ready to Sync");
         }
@@ -327,6 +327,55 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
                     setGatewayUrl(DEFAULT_GATEWAY_ENDPOINT);
                     Toast.makeText(this, "Reset to Boma Box AP (192.168.4.1)", Toast.LENGTH_SHORT).show();
                 })
+                .show();
+    }
+
+    private void showOptionsMenu(View anchor) {
+        PopupMenu popup = new PopupMenu(this, anchor);
+        Menu menu = popup.getMenu();
+
+        String roleStr = authManager.isVetMode() ? "Field Veterinarian" : "Cow Owner / Herder";
+        MenuItem headerItem = menu.add(Menu.NONE, 1, 1, "👤 " + authManager.getActiveDisplayName() + " (" + roleStr + ")");
+        headerItem.setEnabled(false);
+
+        if (authManager.isVetMode()) {
+            menu.add(Menu.NONE, 2, 2, "⚙️ Gateway IP Settings");
+        }
+        menu.add(Menu.NONE, 3, 3, "❓ Boma Connection Help");
+        menu.add(Menu.NONE, 4, 4, "🗑️ Clear All Animals");
+        menu.add(Menu.NONE, 5, 5, "🚪 Log Out / Switch User");
+
+        popup.setOnMenuItemClickListener(item -> {
+            int id = item.getItemId();
+            if (id == 2) {
+                showGatewayConfigDialog();
+                return true;
+            } else if (id == 3) {
+                showBomaConnectionHelpDialog();
+                return true;
+            } else if (id == 4) {
+                confirmClearAllCows();
+                return true;
+            } else if (id == 5) {
+                performLogout();
+                return true;
+            }
+            return false;
+        });
+
+        popup.show();
+    }
+
+    private void performLogout() {
+        new AlertDialog.Builder(this)
+                .setTitle("🚪 Log Out")
+                .setMessage("Are you sure you want to log out of your session as " + authManager.getActiveDisplayName() + "?")
+                .setPositiveButton("Log Out", (dialog, which) -> {
+                    authManager.logout();
+                    Toast.makeText(this, "Logged out successfully", Toast.LENGTH_SHORT).show();
+                    redirectToLogin();
+                })
+                .setNegativeButton("Cancel", null)
                 .show();
     }
 
@@ -513,18 +562,29 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
     }
 
     private void confirmClearAllCows() {
-        new AlertDialog.Builder(this)
-                .setTitle("Clear All Animals (Clean Slate)?")
-                .setMessage("This will remove all demo and recorded animals from your phone so you can focus only on the real cow you are currently testing.\n\nAre you sure?")
-                .setIcon(R.drawable.ic_warning_triangle)
-                .setPositiveButton("Clear All", (dialog, which) -> {
-                    repository.clearAllData(() -> runOnUiThread(() -> {
-                        Toast.makeText(this, "Clean slate ready! All animals cleared.", Toast.LENGTH_SHORT).show();
-                        refreshDashboardFromLocalDb();
-                    }));
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+        AlertDialog.Builder builder = new AlertDialog.Builder(this);
+        builder.setTitle("⚠️ Clear All Animals (Clean Slate)?");
+        builder.setMessage("This will permanently remove all livestock records and telemetry stored offline on this device.\n\nTo confirm, please enter your 4-digit PIN:");
+        builder.setIcon(R.drawable.ic_warning_triangle);
+
+        final EditText pinInput = new EditText(this);
+        pinInput.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        pinInput.setHint("Enter 4-digit PIN");
+        builder.setView(pinInput);
+
+        builder.setPositiveButton("Verify & Clear All", (dialog, which) -> {
+            String entered = pinInput.getText() != null ? pinInput.getText().toString().trim() : "";
+            if (authManager.verifyPinOnly(authManager.getActiveRole(), entered)) {
+                repository.clearAllData(() -> runOnUiThread(() -> {
+                    Toast.makeText(this, "Clean slate ready! All animals cleared.", Toast.LENGTH_SHORT).show();
+                    refreshDashboardFromLocalDb();
+                }));
+            } else {
+                Toast.makeText(this, "Incorrect PIN. Action aborted for security.", Toast.LENGTH_LONG).show();
+            }
+        });
+        builder.setNegativeButton("Cancel", null);
+        builder.show();
     }
 
     @Override

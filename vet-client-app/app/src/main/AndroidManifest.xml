@@ -31,10 +31,10 @@
             </intent-filter>
         </activity>
 
-        <!-- Screen 2: Human-Centered Herd Triage Dashboard Activity -->
+        <!-- Screen 2: Human-Centered Herd Triage Dashboard Activity (Guarded by Login) -->
         <activity
             android:name=".ui.MainActivity"
-            android:exported="true"
+            android:exported="false"
             android:label="@string/title_dashboard" />
 
         <!-- Screen 3: Animal Health, Action Checklist & Yield Detail Activity -->

@@ -1,42 +1,48 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
+#include <LoRa.h>
 #include <PubSubClient.h>
 #include <SD.h>
 #include <SPI.h>
 #include <WiFi.h>
 #include <Wire.h>
 
-
 #define SCREEN_WIDTH 128
 #define SCREEN_HEIGHT 64
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 
-#define LED_RED 32
-#define LED_AMBER 33
-#define ACK_BUTTON 27
+// Hardware Pinout per Prototype Specification
+#define LED_RED 25
+#define LED_AMBER 27
+#define ACK_BUTTON 32
 #define SD_CS 15
 
-const char *ssid = "Wokwi-GUEST";
-const char *password = "";
+// LoRa SX1278 (Ra-01 433MHz) Pins
+#define LORA_CS 5
+#define LORA_RST 14
+#define LORA_DIO0 26
+
+const char *ssid = "Kiten-sdu n";
+const char *password = "ARunke@123";
 const char *mqtt_server = "broker.hivemq.com";
 const char *mqtt_topic = "capstone/livestock/telemetry";
-const char *client_id = "Gateway_RX_TevinTajeu_1026";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
-SPIClass spiSD(HSPI);
 
-// --- ALERT STATE MACHINE GLOBALS (Specific Objective 3) ---
-int activeAlertPattern = 0; // 0 = Normal, 1 = Health (800ms), 2 = Stray
-                            // (400ms), 3 = Predator/Theft (150ms)
-bool alertAcknowledged =
-    false; // Resets alert fatigue when farmer presses Pin 27
+bool loraReady = false;
+bool sdReady = false;
+bool oledReady = false;
+
+// --- ALERT STATE MACHINE GLOBALS ---
+int activeAlertPattern = 0; // 0 = Normal, 1 = Health (800ms), 2 = Stray (400ms), 3 = Predator (150ms)
+bool alertAcknowledged = false;
 unsigned long lastBlinkTime = 0;
 bool ledToggleState = false;
 unsigned long lastBtnPress = 0;
 unsigned long lastMqttRetry = 0;
 
-// --- NON-BLOCKING PATTERN-ENCODED LED MATRIX ---
+// Non-blocking Pattern-Encoded LED Driver
 void updateAlertLeds() {
   if (activeAlertPattern == 0 || alertAcknowledged) {
     digitalWrite(LED_RED, LOW);
@@ -45,9 +51,8 @@ void updateAlertLeds() {
   }
 
   unsigned long now = millis();
-
   if (activeAlertPattern == 1) {
-    // Pattern 1: Health / Fever / Calving -> Steady 800ms pulse on Amber LED
+    // Pattern 1: Health -> 800ms Amber pulse
     if (now - lastBlinkTime >= 800) {
       lastBlinkTime = now;
       ledToggleState = !ledToggleState;
@@ -55,7 +60,7 @@ void updateAlertLeds() {
       digitalWrite(LED_RED, LOW);
     }
   } else if (activeAlertPattern == 2) {
-    // Pattern 2: Geofence Stray (>500m) -> Medium 400ms blink on Red LED
+    // Pattern 2: Stray Geofence -> 400ms Red blink
     if (now - lastBlinkTime >= 400) {
       lastBlinkTime = now;
       ledToggleState = !ledToggleState;
@@ -63,8 +68,7 @@ void updateAlertLeds() {
       digitalWrite(LED_AMBER, LOW);
     }
   } else if (activeAlertPattern == 3) {
-    // Pattern 3: Predator / Theft Motion Spike -> Rapid 150ms alternating
-    // strobe on Red & Amber LEDs
+    // Pattern 3: Predator Spike -> 150ms alternating Red & Amber strobe
     if (now - lastBlinkTime >= 150) {
       lastBlinkTime = now;
       ledToggleState = !ledToggleState;
@@ -74,13 +78,9 @@ void updateAlertLeds() {
   }
 }
 
-// --- MQTT TELEMETRY RECEIVER CALLBACK ---
-void callback(char *topic, byte *payload, unsigned int length) {
-  String incoming = "";
-  for (int i = 0; i < length; i++) {
-    incoming += (char)payload[i];
-  }
-  Serial.println("\n[GATEWAY RX] " + incoming);
+// Process Structured Telemetry Packet
+void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
+  Serial.println("\n[GATEWAY RX] Packet: " + incoming + (rssi != 0 ? " (RSSI: " + String(rssi) + " dBm, SNR: " + String(snr, 1) + " dB)" : ""));
 
   // Parse 5-Field CSV: NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
   int c1 = incoming.indexOf(',');
@@ -99,145 +99,178 @@ void callback(char *topic, byte *payload, unsigned int length) {
   int distance = incoming.substring(c3 + 1, c4).toInt();
   int anomalyFlag = incoming.substring(c4 + 1).toInt();
 
-  // 1. Append to Local SD Card Storage (/livestock.csv)
-  File file = SD.open("/livestock.csv", FILE_APPEND);
-  if (file) {
-    file.println(incoming);
-    file.close();
-    Serial.println("[SD STORAGE] Appended record to /livestock.csv");
-  } else {
-    Serial.println("[SD ERROR] Failed to write to /livestock.csv");
+  // 1. Append to SD Card (/telemetry.csv)
+  if (sdReady) {
+    File file = SD.open("/telemetry.csv", FILE_APPEND);
+    if (file) {
+      file.println(incoming);
+      file.close();
+      Serial.println("[SD STORAGE] Appended record to /telemetry.csv");
+    } else {
+      Serial.println("[SD ERROR] Failed to write to /telemetry.csv");
+    }
   }
 
-  // 2. Determine Pattern-Encoded Alert Level & Unmute Alert State
+  // 2. Alert Logic & Reset Acknowledgment on new anomaly
   String statusLabel = "NORMAL";
-  alertAcknowledged = false; // New incoming anomaly wakes up the visual alert
+  alertAcknowledged = false;
 
-  if (anomalyFlag == 3 || accel > 14.0 || (distance > 500 && accel > 14.0)) {
-    activeAlertPattern = 3; // Urgent 150ms Red+Amber Strobe
+  if (anomalyFlag == 3 || accel > 14.0) {
+    activeAlertPattern = 3;
     statusLabel = "PREDATOR / THEFT!";
   } else if (anomalyFlag == 2 || distance > 500) {
-    activeAlertPattern = 2; // 400ms Red Blink
+    activeAlertPattern = 2;
     statusLabel = "STRAY ALERT (>500m)";
   } else if (anomalyFlag == 1 || temp > 39.5 || temp < 37.8) {
-    activeAlertPattern = 1; // 800ms Amber Pulse
+    activeAlertPattern = 1;
     statusLabel = (temp < 37.8) ? "CALVING DROP!" : "FEVER ALERT!";
   } else {
     activeAlertPattern = 0;
   }
 
-  // 3. Render Farmer Triage Summary on SSD1306 OLED
-  display.clearDisplay();
-  display.setCursor(0, 0);
-  display.setTextSize(1);
-  display.setTextColor(SSD1306_WHITE);
-  display.println("=== FARM GATEWAY ===");
-  display.println("Cow ID: " + nodeId);
-  display.println("Temp:   " + String(temp, 1) + " C");
-  display.println("Motion: " + String(accel, 1) + " m/s2");
-  display.println("Dist:   " + String(distance) + " m");
-  display.println("--------------------");
-  display.println(statusLabel);
-  display.display();
-}
-
-void setup_wifi() {
-  Serial.print("Connecting to WiFi");
-  WiFi.begin(ssid, password);
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\nWiFi connected!");
-}
-
-void reconnect_mqtt() {
-  if (!client.connected() && (millis() - lastMqttRetry > 2000)) {
-    lastMqttRetry = millis();
-    Serial.print("Connecting to MQTT Broker...");
-    if (client.connect(client_id)) {
-      Serial.println(" Connected!");
-      client.subscribe(mqtt_topic);
-    } else {
-      Serial.println(" Retry in 2s (rc=" + String(client.state()) + ")");
-    }
-  }
-}
-
-void setup() {
-  Serial.begin(115200);
-  pinMode(LED_RED, OUTPUT);
-  pinMode(LED_AMBER, OUTPUT);
-  pinMode(ACK_BUTTON, INPUT_PULLUP);
-
-  Wire.begin(21, 22);
-  if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+  // 3. Render on SSD1306 OLED
+  if (oledReady) {
     display.clearDisplay();
     display.setCursor(0, 0);
     display.setTextSize(1);
     display.setTextColor(SSD1306_WHITE);
-    display.println("FARM GATEWAY READY");
-    display.println("Waiting for alerts...");
+    display.println("=== LIVESTOCK GATEWAY ===");
+    display.println("Cow ID: " + nodeId);
+    display.println("Temp:   " + String(temp, 1) + " C");
+    display.println("Motion: " + String(accel, 1) + " m/s2");
+    display.println("Dist:   " + String(distance) + " m");
+    display.println("--------------------");
+    display.println(statusLabel);
     display.display();
   }
+}
 
-  // Initialize HSPI MicroSD Card & Create CSV File Header if Missing
-  spiSD.begin(14, 12, 13, SD_CS);
-  if (!SD.begin(SD_CS, spiSD)) {
-    Serial.println("[SD ERROR] SD Card mount failed!");
+// MQTT Callback (for hybrid Wi-Fi intake)
+void mqttCallback(char *topic, byte *payload, unsigned int length) {
+  String incoming = "";
+  for (unsigned int i = 0; i < length; i++) {
+    incoming += (char)payload[i];
+  }
+  processTelemetryPacket(incoming);
+}
+
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+  Serial.println("\n=========================================");
+  Serial.println("     EDGE GATEWAY INITIALIZING (NODE 2)  ");
+  Serial.println("=========================================");
+
+  pinMode(LED_RED, OUTPUT);
+  pinMode(LED_AMBER, OUTPUT);
+  pinMode(ACK_BUTTON, INPUT_PULLUP);
+  digitalWrite(LED_RED, LOW);
+  digitalWrite(LED_AMBER, LOW);
+
+  // Initialize I2C OLED on GPIO 21 (SDA) / GPIO 22 (SCL)
+  Wire.begin(21, 22);
+  if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
+    oledReady = true;
+    display.clearDisplay();
+    display.setCursor(0, 0);
+    display.setTextSize(1);
+    display.setTextColor(SSD1306_WHITE);
+    display.println("=== LIVESTOCK GATEWAY ===");
+    display.println("System Ready.");
+    display.println("Waiting for LoRa packets...");
+    display.display();
+    Serial.println("[INIT OK] SSD1306 OLED initialized on I2C 0x3C.");
   } else {
-    if (!SD.exists("/livestock.csv")) {
-      File initFile = SD.open("/livestock.csv", FILE_WRITE);
-      if (initFile) {
-        initFile.println("node_id,temp,acc_x,distance,anomaly_flag");
-        initFile.close();
-        Serial.println("[SD INIT] Created /livestock.csv with header");
-      }
-    }
+    Serial.println("[INIT WARN] SSD1306 OLED not found on I2C (0x3C).");
   }
 
-  setup_wifi();
-  client.setServer(mqtt_server, 1883);
-  client.setKeepAlive(90);
-  client.setCallback(callback);
+  // Initialize LoRa 433 MHz Receiver
+  LoRa.setPins(LORA_CS, LORA_RST, LORA_DIO0);
+  if (LoRa.begin(433E6)) {
+    loraReady = true;
+    Serial.println("[INIT OK] Ra-01 LoRa Receiver started on 433 MHz.");
+  } else {
+    Serial.println("[INIT WARN] Ra-01 LoRa not detected. (Check CS=5, RST=14, DIO0=26).");
+  }
+
+  // Initialize MicroSD Card on GPIO 15
+  if (SD.begin(SD_CS)) {
+    sdReady = true;
+    Serial.println("[INIT OK] MicroSD Card mounted on GPIO 15.");
+    if (!SD.exists("/telemetry.csv")) {
+      File f = SD.open("/telemetry.csv", FILE_WRITE);
+      if (f) {
+        f.println("node_id,temp_c,dyn_accel,distance_m,anomaly_flag");
+        f.close();
+      }
+    }
+  } else {
+    Serial.println("[INIT WARN] MicroSD Card failed to mount on GPIO 15.");
+  }
+
+  // Connect to Wi-Fi & MQTT (Non-blocking fallback)
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid, password);
+  unsigned long startWifi = millis();
+  while (WiFi.status() != WL_CONNECTED && millis() - startWifi < 10000) {
+    delay(500);
+    Serial.print(".");
+  }
+  if (WiFi.status() == WL_CONNECTED) {
+    Serial.println("\n[WIFI OK] Connected! IP: " + WiFi.localIP().toString());
+    client.setServer(mqtt_server, 1883);
+    client.setCallback(mqttCallback);
+    String gwClientId = "Gateway_RX_" + String((uint32_t)ESP.getEfuseMac(), HEX);
+    if (client.connect(gwClientId.c_str())) {
+      client.subscribe(mqtt_topic);
+      Serial.println("[MQTT OK] Subscribed to " + String(mqtt_topic));
+    }
+  } else {
+    Serial.println("\n[OFF-GRID] Running in standalone LoRa edge mode.");
+  }
+
+  Serial.println("[READY] Edge Gateway initialized.\n");
 }
 
 void loop() {
-  if (!client.connected()) {
-    reconnect_mqtt();
+  // Check for LoRa packets on 433 MHz
+  if (loraReady) {
+    int packetSize = LoRa.parsePacket();
+    if (packetSize) {
+      String loraPacket = "";
+      while (LoRa.available()) {
+        loraPacket += (char)LoRa.read();
+      }
+      processTelemetryPacket(loraPacket, LoRa.packetRssi(), LoRa.packetSnr());
+    }
   }
-  client.loop();
 
-  // Drive Non-Blocking Pattern-Encoded LEDs
+  // Maintain MQTT if connected
+  if (WiFi.status() == WL_CONNECTED) {
+    if (client.connected()) {
+      client.loop();
+    }
+  }
+
+  // Update Visual LED Alert Pattern
   updateAlertLeds();
 
-  // Non-Blocking Acknowledgment Button & SD Log Dump (Pin 27)
-  if (digitalRead(ACK_BUTTON) == LOW && (millis() - lastBtnPress > 600)) {
+  // Handle Hardware Acknowledgment Button (GPIO 32)
+  if (digitalRead(ACK_BUTTON) == LOW && (millis() - lastBtnPress > 500)) {
     lastBtnPress = millis();
     alertAcknowledged = true;
     activeAlertPattern = 0;
     digitalWrite(LED_RED, LOW);
     digitalWrite(LED_AMBER, LOW);
 
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.println("=== FARM GATEWAY ===");
-    display.println("\nAlert Acknowledged!");
-    display.println("LEDs Silenced.");
-    display.println("Dumping SD Log...");
-    display.display();
-
-    // Dump SD Card contents to Serial Monitor
-    File readFile = SD.open("/livestock.csv");
-    if (readFile) {
-      Serial.println("\n--- SD CARD LOG DUMP (/livestock.csv) ---");
-      while (readFile.available()) {
-        Serial.write(readFile.read());
-      }
-      Serial.println("-----------------------------------------\n");
-      readFile.close();
-    } else {
-      Serial.println("[SD ERROR] Could not open /livestock.csv for reading");
+    if (oledReady) {
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.println("=== LIVESTOCK GATEWAY ===");
+      display.println("\nAlert Acknowledged!");
+      display.println("LEDs Silenced.");
+      display.display();
     }
+    Serial.println("[ACK] Alert fatigue acknowledged via Button GPIO 32. LEDs silenced.");
   }
 }

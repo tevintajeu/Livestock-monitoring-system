@@ -93,16 +93,57 @@ NODE_ID,TEMPERATURE_C,DYNAMIC_ACCEL_MS2,GEOFENCE_DISTANCE_M,ANOMALY_FLAG
   * **LoRa Radio (Ra-01):** Reported `Ra-01 LoRa not detected on 433MHz`. SPI lines (18, 19, 23) or control pins (5, 14, 26) not yet attached or require verification.
   * **System Resilience:** Because non-blocking initialization was implemented, neither missing component halted the ESP32; it successfully maintained Wi-Fi, MQTT publishing, potentiometer ADC sampling, and temperature 1-Wire reading.
 
+### Entry 004 - ADC Jitter Stabilization & Gateway SoftAP/WebServer Architecture
+* **Date:** 2026-11-23
+* **Milestones:**
+  1. **Potentiometer ADC Filtering:** Implemented `readStableDistance()` on Node 1 with 32-sample burst oversampling and a ±15m deadband filter to eliminate RF power-supply jitter on GPIO 34.
+  2. **Edge Gateway Companion Sync Architecture:**
+     * Added `WebServer server(8080)` to `edge-gateway/src/main.cpp` with `/data` endpoint serving structured CSV (`node_id,temp_c,dyn_accel,distance_m,anomaly_flag`).
+     * Broadcast local SoftAP `ESP32_LIVESTOCK_AP` (IP: `192.168.4.1`, Pass: `12345678`) enabling the Android mobile app (`vet-client-app`) to sync off-grid without requiring router infrastructure.
+     * Implemented 2.5-second solid LED power-on self-test (POST) on boot to visually verify Red (GPIO 25) and Amber (GPIO 27) LED hardware polarity.
+     * Converted Acknowledgment Button (GPIO 32) from level-triggered to falling-edge debouncing (`currentBtn == LOW && lastButtonState == HIGH`) to prevent floating ground suppression of alerts.
+
+### Entry 005 - Dual-Node Concurrent Bring-Up, Live Cross-Node Telemetry & REST API Verification
+* **Date:** 2026-11-24
+* **Hardware Setup:**
+  * **Wearable Collar Node (Node 1):** Enumerated on `COM7` (MAC: `d8:bf:c0:98:74:7c`).
+  * **Edge Gateway (Node 2):** Enumerated on `COM8` (MAC: `48:af:f3:5a:b8:28`).
+* **Validation Results:**
+  1. **Dual-Node Simultaneous Flash:** Both `COM7` and `COM8` cleanly flashed via PlatformIO (`esp32dev` environment).
+  2. **Gateway Boot Diagnostics (COM8):**
+     * Alert LED Self-Test completed successfully (GPIO 25 & 27 solid ON for 2.5s).
+     * SSD1306 OLED initialized on I2C address `0x3C`.
+     * SoftAP broadcast active: `ESP32_LIVESTOCK_AP` (`192.168.4.1`).
+     * Connected to local Wi-Fi `Kiten-sdu n` with Station IP `192.168.100.6`.
+     * WebServer listening on port 8080 (`/data`).
+  3. **Wearable Node Telemetry (COM7):**
+     * Connected to Wi-Fi `Kiten-sdu n` with Station IP `192.168.100.5`.
+     * Connected to `broker.hivemq.com` as `Node_TX_98c0bfd8`.
+     * Publishing live telemetry at 2.5s intervals: `NODE_001,26.44,0.00,109,0`.
+  4. **Cross-Node Telemetry Relay:**
+     * Gateway on `COM8` received live packet from Node 1: `[GATEWAY RX] Packet: NODE_001,26.44,0.00,109,0`.
+     * Rendered cow telemetry immediately to SSD1306 OLED display.
+  5. **Android Companion App Endpoint Test:**
+     * Sent HTTP GET request to `http://192.168.100.6:8080/data`.
+     * Response: `HTTP 200 OK`
+     * Payload:
+       ```csv
+       node_id,temp_c,dyn_accel,distance_m,anomaly_flag
+       NODE_001,26.44,0.00,0,0
+       ```
+     * Confirmed 100% compatibility with Android `vet-client-app/network/Esp32SyncClient.java`.
+
 ---
 
 ## 5. Active Action Items & Next Steps
 
-- [x] **Step 1:** Complete CP2102 driver installation on Windows host to assign COM port (`COM7`).
-- [x] **Step 2:** Flash `wearable-node` via PlatformIO (`pio run -d wearable-node --target upload`).
-- [x] **Step 3:** Validate live telemetry transmission on HiveMQ WebSocket client (`broker.hivemq.com` -> `capstone/livestock/telemetry`).
-- [ ] **Step 4:** Physical sensor sweep:
-  - [x] Sweep 10 kΩ potentiometer from 0V to 3.3V and verify distance maps linearly from 0 to 1000 m (Validated).
-  - [x] Touch DS18B20 probe to verify thermal climb from ~24.8 °C to 26.3 °C (Validated).
-  - [ ] Connect/verify MPU6050/6500 wiring on I2C (SDA=21, SCL=22, VCC=3V3, GND=GND).
-  - [ ] Connect/verify Ra-01 LoRa 433 MHz module wiring (SCK=18, MISO=19, MOSI=23, CS=5, RST=14, DIO0=26, VCC=3.3V ONLY).
-- [ ] **Step 5:** Transition to Off-Grid LoRa Architecture: Bring up Node 2 (Edge Gateway) with LoRa 433 MHz, OLED, MicroSD, and LEDs.
+- [x] **Step 1:** Complete CP2102 driver installation on Windows host to assign COM ports (`COM7`, `COM8`).
+- [x] **Step 2:** Flash `wearable-node` via PlatformIO to `COM7`.
+- [x] **Step 3:** Flash `edge-gateway` via PlatformIO to `COM8`.
+- [x] **Step 4:** Validate live telemetry transmission on HiveMQ WebSocket client (`broker.hivemq.com` -> `capstone/livestock/telemetry`).
+- [x] **Step 5:** Bring up Node 2 (Edge Gateway) with dual Wi-Fi/MQTT, SSD1306 OLED, SoftAP (`192.168.4.1`), and WebServer (`:8080/data`).
+- [x] **Step 6:** Validate cross-node telemetry reception on Edge Gateway.
+- [ ] **Step 7:** Physical LoRa & MPU Module Jumper Wiring:
+  - Wire Ra-01 LoRa 433 MHz SPI pins (SCK=18, MISO=19, MOSI=23, CS=5, RST=14, DIO0=26, VCC=3.3V, GND=GND) to enable RF transmission beyond Wi-Fi range.
+  - Wire MPU6050/6500 IMU pins (SDA=21, SCL=22, VCC=3.3V, GND=GND) for physical 3-axis motion tracking.
+- [ ] **Step 8:** Sync Android Companion App (`vet-client-app`) with Gateway SoftAP.

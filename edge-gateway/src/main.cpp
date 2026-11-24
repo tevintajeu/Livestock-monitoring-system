@@ -4,6 +4,7 @@
 #include <PubSubClient.h>
 #include <SD.h>
 #include <SPI.h>
+#include <WebServer.h>
 #include <WiFi.h>
 #include <Wire.h>
 
@@ -27,12 +28,18 @@ const char *password = "ARunke@123";
 const char *mqtt_server = "broker.hivemq.com";
 const char *mqtt_topic = "capstone/livestock/telemetry";
 
+// SoftAP for Mobile Phone Direct Sync (Boma AP)
+const char *ap_ssid = "ESP32_LIVESTOCK_AP";
+const char *ap_pass = "12345678";
+
 WiFiClient espClient;
 PubSubClient client(espClient);
+WebServer server(8080);
 
 bool loraReady = false;
 bool sdReady = false;
 bool oledReady = false;
+String lastReceivedPacket = "NODE_001,38.5,0.0,0,0";
 
 // --- ALERT STATE MACHINE GLOBALS ---
 int activeAlertPattern = 0; // 0 = Normal, 1 = Health (800ms), 2 = Stray (400ms), 3 = Predator (150ms)
@@ -41,6 +48,7 @@ unsigned long lastBlinkTime = 0;
 bool ledToggleState = false;
 unsigned long lastBtnPress = 0;
 unsigned long lastMqttRetry = 0;
+int lastButtonState = HIGH;
 
 // Non-blocking Pattern-Encoded LED Driver
 void updateAlertLeds() {
@@ -80,6 +88,7 @@ void updateAlertLeds() {
 
 // Process Structured Telemetry Packet
 void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
+  lastReceivedPacket = incoming;
   Serial.println("\n[GATEWAY RX] Packet: " + incoming + (rssi != 0 ? " (RSSI: " + String(rssi) + " dBm, SNR: " + String(snr, 1) + " dB)" : ""));
 
   // Parse 5-Field CSV: NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
@@ -113,7 +122,7 @@ void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
 
   // 2. Alert Logic & Reset Acknowledgment on new anomaly
   String statusLabel = "NORMAL";
-  alertAcknowledged = false;
+  alertAcknowledged = false; // New incoming anomaly wakes up the visual alert
 
   if (anomalyFlag == 3 || accel > 14.0) {
     activeAlertPattern = 3;
@@ -145,6 +154,29 @@ void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
   }
 }
 
+// HTTP Server endpoint: returns CSV for Phone Vet Client App
+void handleHttpData() {
+  String responseData = "node_id,temp_c,dyn_accel,distance_m,anomaly_flag\n";
+  if (sdReady && SD.exists("/telemetry.csv")) {
+    File f = SD.open("/telemetry.csv", FILE_READ);
+    if (f) {
+      while (f.available()) {
+        responseData += (char)f.read();
+      }
+      f.close();
+    }
+  } else {
+    // Provide live telemetry record directly to phone
+    responseData += lastReceivedPacket + "\n";
+  }
+  server.send(200, "text/csv", responseData);
+  Serial.println("[HTTP SYNC] Served telemetry CSV to connected phone.");
+}
+
+void handleHttpRoot() {
+  server.send(200, "text/plain", "Livestock Edge Gateway Active. Connect to /data for CSV.");
+}
+
 // MQTT Callback (for hybrid Wi-Fi intake)
 void mqttCallback(char *topic, byte *payload, unsigned int length) {
   String incoming = "";
@@ -164,8 +196,15 @@ void setup() {
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_AMBER, OUTPUT);
   pinMode(ACK_BUTTON, INPUT_PULLUP);
+
+  // --- 2.5-SECOND HARDWARE LED TEST ON BOOT ---
+  Serial.println("[POST] Turning ON Red (GPIO 25) & Amber (GPIO 27) for 2.5 seconds...");
+  digitalWrite(LED_RED, HIGH);
+  digitalWrite(LED_AMBER, HIGH);
+  delay(2500);
   digitalWrite(LED_RED, LOW);
   digitalWrite(LED_AMBER, LOW);
+  Serial.println("[POST OK] LED hardware test complete.");
 
   // Initialize I2C OLED on GPIO 21 (SDA) / GPIO 22 (SCL)
   Wire.begin(21, 22);
@@ -177,7 +216,8 @@ void setup() {
     display.setTextColor(SSD1306_WHITE);
     display.println("=== LIVESTOCK GATEWAY ===");
     display.println("System Ready.");
-    display.println("Waiting for LoRa packets...");
+    display.println("AP: ESP32_LIVESTOCK_AP");
+    display.println("Waiting for packets...");
     display.display();
     Serial.println("[INIT OK] SSD1306 OLED initialized on I2C 0x3C.");
   } else {
@@ -208,16 +248,19 @@ void setup() {
     Serial.println("[INIT WARN] MicroSD Card failed to mount on GPIO 15.");
   }
 
-  // Connect to Wi-Fi & MQTT (Non-blocking fallback)
-  WiFi.mode(WIFI_STA);
+  // Configure Wi-Fi in dual mode: SoftAP (for Phone) + STA (for Home/Bench Wi-Fi)
+  WiFi.mode(WIFI_AP_STA);
+  WiFi.softAP(ap_ssid, ap_pass);
+  Serial.println("[AP OK] SoftAP started: " + String(ap_ssid) + " (IP: " + WiFi.softAPIP().toString() + ")");
+
   WiFi.begin(ssid, password);
   unsigned long startWifi = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startWifi < 10000) {
-    delay(500);
+  while (WiFi.status() != WL_CONNECTED && millis() - startWifi < 8000) {
+    delay(400);
     Serial.print(".");
   }
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n[WIFI OK] Connected! IP: " + WiFi.localIP().toString());
+    Serial.println("\n[WIFI OK] Connected to " + String(ssid) + "! IP: " + WiFi.localIP().toString());
     client.setServer(mqtt_server, 1883);
     client.setCallback(mqttCallback);
     String gwClientId = "Gateway_RX_" + String((uint32_t)ESP.getEfuseMac(), HEX);
@@ -226,13 +269,22 @@ void setup() {
       Serial.println("[MQTT OK] Subscribed to " + String(mqtt_topic));
     }
   } else {
-    Serial.println("\n[OFF-GRID] Running in standalone LoRa edge mode.");
+    Serial.println("\n[OFF-GRID] Running in standalone LoRa / SoftAP edge mode.");
   }
+
+  // Start HTTP Server for Vet Client App on port 8080
+  server.on("/data", handleHttpData);
+  server.on("/", handleHttpRoot);
+  server.begin();
+  Serial.println("[HTTP OK] Web server running on port 8080. Phone endpoint: http://" + WiFi.softAPIP().toString() + ":8080/data");
 
   Serial.println("[READY] Edge Gateway initialized.\n");
 }
 
 void loop() {
+  // Handle HTTP requests from Phone App
+  server.handleClient();
+
   // Check for LoRa packets on 433 MHz
   if (loraReady) {
     int packetSize = LoRa.parsePacket();
@@ -255,8 +307,9 @@ void loop() {
   // Update Visual LED Alert Pattern
   updateAlertLeds();
 
-  // Handle Hardware Acknowledgment Button (GPIO 32)
-  if (digitalRead(ACK_BUTTON) == LOW && (millis() - lastBtnPress > 500)) {
+  // Handle Hardware Acknowledgment Button (GPIO 32) with Falling-Edge Debounce
+  int currentBtn = digitalRead(ACK_BUTTON);
+  if (currentBtn == LOW && lastButtonState == HIGH && (millis() - lastBtnPress > 250)) {
     lastBtnPress = millis();
     alertAcknowledged = true;
     activeAlertPattern = 0;
@@ -272,5 +325,16 @@ void loop() {
       display.display();
     }
     Serial.println("[ACK] Alert fatigue acknowledged via Button GPIO 32. LEDs silenced.");
+  }
+  lastButtonState = currentBtn;
+
+  // Serial Monitor Manual Injection for Independent Bench-Testing
+  if (Serial.available()) {
+    String serialPacket = Serial.readStringUntil('\n');
+    serialPacket.trim();
+    if (serialPacket.length() > 0) {
+      Serial.println("[MANUAL INJECTION] Processing Serial Test Packet: " + serialPacket);
+      processTelemetryPacket(serialPacket, -45, 9.5);
+    }
   }
 }

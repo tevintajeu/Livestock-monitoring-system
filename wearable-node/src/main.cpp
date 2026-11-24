@@ -48,13 +48,15 @@ void scanI2CDevices() {
     Wire.beginTransmission(i);
     if (Wire.endTransmission() == 0) {
       Serial.print(" -> Found device at 0x");
-      if (i < 16) Serial.print("0");
+      if (i < 16)
+        Serial.print("0");
       Serial.println(i, HEX);
       count++;
     }
   }
   if (count == 0) {
-    Serial.println(" -> No I2C devices responded. Check MPU VCC/GND/SDA/SCL wiring.");
+    Serial.println(
+        " -> No I2C devices responded. Check MPU VCC/GND/SDA/SCL wiring.");
   }
 }
 
@@ -91,7 +93,8 @@ void saveToFlashFallback(String payload) {
     String key = "pkt_" + String(count);
     flashStorage.putString(key.c_str(), payload);
     flashStorage.putInt("count", count + 1);
-    Serial.println("[FLASH FALLBACK] Offline: Saved packet #" + String(count + 1) + " to NVS: " + payload);
+    Serial.println("[FLASH FALLBACK] Offline: Saved packet #" +
+                   String(count + 1) + " to NVS: " + payload);
   } else {
     Serial.println("[FLASH FALLBACK] NVS buffer full!");
   }
@@ -103,7 +106,8 @@ void flushFlashBacklog() {
   flashStorage.begin("telemetry_bak", false);
   int count = flashStorage.getInt("count", 0);
   if (count > 0) {
-    Serial.println("[FLASH FALLBACK] Reconnected! Flushing " + String(count) + " backlogged packets...");
+    Serial.println("[FLASH FALLBACK] Reconnected! Flushing " + String(count) +
+                   " backlogged packets...");
     for (int i = 0; i < count; i++) {
       String key = "pkt_" + String(i);
       String savedPayload = flashStorage.getString(key.c_str(), "");
@@ -131,9 +135,11 @@ void setup_wifi() {
   }
 
   if (WiFi.status() == WL_CONNECTED) {
-    Serial.println("\n[WIFI] Connected! IP Address: " + WiFi.localIP().toString());
+    Serial.println("\n[WIFI] Connected! IP Address: " +
+                   WiFi.localIP().toString());
   } else {
-    Serial.println("\n[WIFI WARN] Connection timed out. Will retry in background loop.");
+    Serial.println(
+        "\n[WIFI WARN] Connection timed out. Will retry in background loop.");
   }
 }
 
@@ -149,12 +155,14 @@ void reconnect_mqtt() {
 
   if (!client.connected() && (millis() - lastMqttRetry > 3000)) {
     lastMqttRetry = millis();
-    Serial.print("[MQTT] Connecting to broker.hivemq.com (Client ID: " + clientId + ")...");
+    Serial.print("[MQTT] Connecting to broker.hivemq.com (Client ID: " +
+                 clientId + ")...");
     if (client.connect(clientId.c_str())) {
       Serial.println(" CONNECTED!");
       flushFlashBacklog();
     } else {
-      Serial.println(" Failed (rc=" + String(client.state()) + "). Fallback to NVS.");
+      Serial.println(" Failed (rc=" + String(client.state()) +
+                     "). Fallback to NVS.");
     }
   }
 }
@@ -185,7 +193,8 @@ void setup() {
     Serial.println("[INIT OK] MPU6050/6500 initialized at 0x69.");
     mpuReady = true;
   } else {
-    Serial.println("[INIT WARN] MPU not detected. Continuing with 0.0 m/s^2 baseline.");
+    Serial.println(
+        "[INIT WARN] MPU not detected. Continuing with 0.0 m/s^2 baseline.");
     mpuReady = false;
   }
 
@@ -194,9 +203,42 @@ void setup() {
   Serial.println("[INIT] Geofence Potentiometer on GPIO 34 (ADC1)");
 
   // Initialize 433 MHz LoRa Radio (Ra-01 / SX1278)
+  pinMode(LORA_CS, OUTPUT);
+  digitalWrite(LORA_CS, HIGH);
+  SPI.begin(18, 19, 23);
+
+  // Hardware Pulse on LoRa RST pin (GPIO 14) to wake up SX1278
+  pinMode(LORA_RST, OUTPUT);
+  digitalWrite(LORA_RST, LOW);
+  delay(10);
+  digitalWrite(LORA_RST, HIGH);
+  delay(10);
+
+  // Diagnostic SPI Read on RegVersion (0x42)
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(LORA_CS, LOW);
+  SPI.transfer(0x42 & 0x7F);
+  uint8_t loraVersion = SPI.transfer(0x00);
+  digitalWrite(LORA_CS, HIGH);
+  SPI.endTransaction();
+  Serial.print("[LORA DIAG] Raw SX1278 RegVersion read: 0x");
+  if (loraVersion < 16) Serial.print("0");
+  Serial.print(loraVersion, HEX);
+  if (loraVersion == 0x12) {
+    Serial.println(" (SX1278 DETECTED!)");
+  } else if (loraVersion == 0x00) {
+    Serial.println(" (ERROR: MISO/SCK grounded or CS pin not toggling)");
+  } else if (loraVersion == 0xFF) {
+    Serial.println(" (ERROR: MISO floating, module unpowered, or wrong pins)");
+  } else {
+    Serial.println(" (UNEXPECTED CHIP VERSION)");
+  }
+
   LoRa.setPins(LORA_CS, LORA_RST, LORA_DIO0);
+  LoRa.setSPI(SPI);
   if (!LoRa.begin(433E6)) {
-    Serial.println("[INIT WARN] Ra-01 LoRa not detected on 433MHz (Check CS=5, RST=14, DIO0=26, 3.3V).");
+    Serial.println("[INIT WARN] Ra-01 LoRa not detected on 433MHz (Check CS=5, "
+                   "RST=14, DIO0=26, 3.3V).");
     loraReady = false;
   } else {
     Serial.println("[INIT OK] Ra-01 LoRa 433 MHz initialized successfully!");
@@ -227,11 +269,13 @@ void loop() {
   if (mpuReady) {
     sensors_event_t a, g, temp_event;
     mpu.getEvent(&a, &g, &temp_event);
-    dynamicAccel = calculateDynamicAcceleration(a.acceleration.x, a.acceleration.y, a.acceleration.z);
+    dynamicAccel = calculateDynamicAcceleration(
+        a.acceleration.x, a.acceleration.y, a.acceleration.z);
   }
 
   // 2. Evaluate Anomaly Logic
-  // Flag 1 = Health (fever >39.5C or drop <37.8C), Flag 2 = Stray (>500m), Flag 3 = Predator (>14.0 m/s^2)
+  // Flag 1 = Health (fever >39.5C or drop <37.8C), Flag 2 = Stray (>500m), Flag
+  // 3 = Predator (>14.0 m/s^2)
   int anomalyFlag = 0;
   if (dynamicAccel > 14.0) {
     anomalyFlag = 3;
@@ -241,7 +285,8 @@ void loop() {
     anomalyFlag = 1;
   }
 
-  // 3. Construct 5-Field CSV Payload: NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
+  // 3. Construct 5-Field CSV Payload:
+  // NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
   String payload = "NODE_001," + String(temp, 2) + "," +
                    String(dynamicAccel, 2) + "," + String(distance) + "," +
                    String(anomalyFlag);
@@ -257,7 +302,8 @@ void loop() {
   // 4B. Stream to HiveMQ Cloud MQTT Broker
   if (client.connected()) {
     client.publish(mqtt_topic, payload.c_str());
-    Serial.println("[HIVEMQ TX] " + payload + (anomalyFlag > 0 ? " [ALERT TRIGGERED!]" : " [NORMAL]"));
+    Serial.println("[HIVEMQ TX] " + payload +
+                   (anomalyFlag > 0 ? " [ALERT TRIGGERED!]" : " [NORMAL]"));
   } else {
     Serial.println("[OFFLINE] " + payload);
     if (anomalyFlag > 0) {

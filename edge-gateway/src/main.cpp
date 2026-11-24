@@ -39,7 +39,9 @@ WebServer server(8080);
 bool loraReady = false;
 bool sdReady = false;
 bool oledReady = false;
-String lastReceivedPacket = "NODE_001,38.5,0.0,0,0";
+String lastReceivedPacket = "";
+unsigned long lastPacketTime = 0;
+bool isTimedOut = false;
 
 // --- ALERT STATE MACHINE GLOBALS ---
 int activeAlertPattern = 0; // 0 = Normal, 1 = Health (800ms), 2 = Stray (400ms), 3 = Predator (150ms)
@@ -49,16 +51,24 @@ bool ledToggleState = false;
 unsigned long lastBtnPress = 0;
 unsigned long lastMqttRetry = 0;
 int lastButtonState = HIGH;
+unsigned long lastHeartbeat = 0;
 
 // Non-blocking Pattern-Encoded LED Driver
 void updateAlertLeds() {
+  unsigned long now = millis();
+
   if (activeAlertPattern == 0 || alertAcknowledged) {
     digitalWrite(LED_RED, LOW);
-    digitalWrite(LED_AMBER, LOW);
+    // Heartbeat: 100ms pulse every 2s on Amber to confirm system is alive & verify LED
+    if (now - lastHeartbeat >= 2000) {
+      lastHeartbeat = now;
+      digitalWrite(LED_AMBER, HIGH);
+      delay(100);
+      digitalWrite(LED_AMBER, LOW);
+    }
     return;
   }
 
-  unsigned long now = millis();
   if (activeAlertPattern == 1) {
     // Pattern 1: Health -> 800ms Amber pulse
     if (now - lastBlinkTime >= 800) {
@@ -89,6 +99,8 @@ void updateAlertLeds() {
 // Process Structured Telemetry Packet
 void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
   lastReceivedPacket = incoming;
+  lastPacketTime = millis();
+  isTimedOut = false;
   Serial.println("\n[GATEWAY RX] Packet: " + incoming + (rssi != 0 ? " (RSSI: " + String(rssi) + " dBm, SNR: " + String(snr, 1) + " dB)" : ""));
 
   // Parse 5-Field CSV: NODE_ID,TEMP,DYNAMIC_ACCEL,DISTANCE,ANOMALY_FLAG
@@ -130,9 +142,9 @@ void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
   } else if (anomalyFlag == 2 || distance > 500) {
     activeAlertPattern = 2;
     statusLabel = "STRAY ALERT (>500m)";
-  } else if (anomalyFlag == 1 || temp > 39.5 || temp < 37.8) {
+  } else if (anomalyFlag == 1 || temp > 39.5) {
     activeAlertPattern = 1;
-    statusLabel = (temp < 37.8) ? "CALVING DROP!" : "FEVER ALERT!";
+    statusLabel = "FEVER ALERT!";
   } else {
     activeAlertPattern = 0;
   }
@@ -157,17 +169,10 @@ void processTelemetryPacket(String incoming, int rssi = 0, float snr = 0.0) {
 // HTTP Server endpoint: returns CSV for Phone Vet Client App
 void handleHttpData() {
   String responseData = "node_id,temp_c,dyn_accel,distance_m,anomaly_flag\n";
-  if (sdReady && SD.exists("/telemetry.csv")) {
-    File f = SD.open("/telemetry.csv", FILE_READ);
-    if (f) {
-      while (f.available()) {
-        responseData += (char)f.read();
-      }
-      f.close();
-    }
-  } else {
-    // Provide live telemetry record directly to phone
+  if (lastReceivedPacket.length() > 0) {
     responseData += lastReceivedPacket + "\n";
+  } else {
+    responseData += "NO_SIGNAL,0.00,0.00,0,0\n";
   }
   server.send(200, "text/csv", responseData);
   Serial.println("[HTTP SYNC] Served telemetry CSV to connected phone.");
@@ -197,14 +202,14 @@ void setup() {
   pinMode(LED_AMBER, OUTPUT);
   pinMode(ACK_BUTTON, INPUT_PULLUP);
 
-  // --- 2.5-SECOND HARDWARE LED TEST ON BOOT ---
-  Serial.println("[POST] Turning ON Red (GPIO 25) & Amber (GPIO 27) for 2.5 seconds...");
+  // --- 3.5-SECOND HARDWARE LED TEST ON BOOT ---
+  Serial.println("[LED TEST] Turning ON Red (GPIO 25) & Amber (GPIO 27) for 3.5 seconds...");
   digitalWrite(LED_RED, HIGH);
   digitalWrite(LED_AMBER, HIGH);
-  delay(2500);
+  delay(3500);
   digitalWrite(LED_RED, LOW);
   digitalWrite(LED_AMBER, LOW);
-  Serial.println("[POST OK] LED hardware test complete.");
+  Serial.println("[LED TEST] Boot LED test finished.");
 
   // Initialize I2C OLED on GPIO 21 (SDA) / GPIO 22 (SCL)
   Wire.begin(21, 22);
@@ -224,13 +229,48 @@ void setup() {
     Serial.println("[INIT WARN] SSD1306 OLED not found on I2C (0x3C).");
   }
 
+  // Initialize Shared SPI Bus Control Pins (Deselect both slaves before initializing)
+  pinMode(LORA_CS, OUTPUT);
+  digitalWrite(LORA_CS, HIGH);
+  pinMode(SD_CS, OUTPUT);
+  digitalWrite(SD_CS, HIGH);
+  SPI.begin(18, 19, 23); // SCK=18, MISO=19, MOSI=23
+
+  // Hardware Pulse on LoRa RST pin (GPIO 14) to wake up SX1278
+  pinMode(LORA_RST, OUTPUT);
+  digitalWrite(LORA_RST, LOW);
+  delay(10);
+  digitalWrite(LORA_RST, HIGH);
+  delay(10);
+
+  // Diagnostic SPI Read on RegVersion (0x42)
+  SPI.beginTransaction(SPISettings(1000000, MSBFIRST, SPI_MODE0));
+  digitalWrite(LORA_CS, LOW);
+  SPI.transfer(0x42 & 0x7F);
+  uint8_t loraVersion = SPI.transfer(0x00);
+  digitalWrite(LORA_CS, HIGH);
+  SPI.endTransaction();
+  Serial.print("[LORA DIAG] Raw SX1278 RegVersion read: 0x");
+  if (loraVersion < 16) Serial.print("0");
+  Serial.print(loraVersion, HEX);
+  if (loraVersion == 0x12) {
+    Serial.println(" (SX1278 DETECTED!)");
+  } else if (loraVersion == 0x00) {
+    Serial.println(" (ERROR: MISO/SCK grounded or CS pin not toggling)");
+  } else if (loraVersion == 0xFF) {
+    Serial.println(" (ERROR: MISO floating, module unpowered, or wrong pins)");
+  } else {
+    Serial.println(" (UNEXPECTED CHIP VERSION)");
+  }
+
   // Initialize LoRa 433 MHz Receiver
   LoRa.setPins(LORA_CS, LORA_RST, LORA_DIO0);
+  LoRa.setSPI(SPI);
   if (LoRa.begin(433E6)) {
     loraReady = true;
     Serial.println("[INIT OK] Ra-01 LoRa Receiver started on 433 MHz.");
   } else {
-    Serial.println("[INIT WARN] Ra-01 LoRa not detected. (Check CS=5, RST=14, DIO0=26).");
+    Serial.println("[INIT WARN] Ra-01 LoRa not detected. (Check CS=5, RST=14, DIO0=26, 3.3V).");
   }
 
   // Initialize MicroSD Card on GPIO 15
@@ -306,6 +346,28 @@ void loop() {
 
   // Update Visual LED Alert Pattern
   updateAlertLeds();
+
+  // Telemetry Staleness Watchdog: If no packet arrives for > 7 seconds, clear stale data
+  if (lastPacketTime > 0 && (millis() - lastPacketTime > 7000) && !isTimedOut) {
+    isTimedOut = true;
+    lastReceivedPacket = "";
+    activeAlertPattern = 0;
+    digitalWrite(LED_RED, LOW);
+    digitalWrite(LED_AMBER, LOW);
+
+    if (oledReady) {
+      display.clearDisplay();
+      display.setCursor(0, 0);
+      display.setTextSize(1);
+      display.setTextColor(SSD1306_WHITE);
+      display.println("=== LIVESTOCK GATEWAY ===");
+      display.println("Status: NO SIGNAL");
+      display.println("Node 1: DISCONNECTED");
+      display.println("Waiting for packets...");
+      display.display();
+    }
+    Serial.println("[WATCHDOG] Node 1 silent >7s. Cleared stale screen and RAM data.");
+  }
 
   // Handle Hardware Acknowledgment Button (GPIO 32) with Falling-Edge Debounce
   int currentBtn = digitalRead(ACK_BUTTON);

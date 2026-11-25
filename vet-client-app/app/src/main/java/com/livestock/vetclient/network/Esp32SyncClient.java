@@ -39,7 +39,7 @@ import okhttp3.ResponseBody;
 public class Esp32SyncClient {
 
     private static final String TAG = "Esp32SyncClient";
-    public static final String DEFAULT_GATEWAY_URL = "http://127.0.0.1:8080/data";
+    public static final String DEFAULT_GATEWAY_URL = "http://192.168.4.1:8080/data";
 
     private final OkHttpClient httpClient;
     private final Handler mainHandler;

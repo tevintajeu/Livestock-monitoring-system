@@ -11,6 +11,7 @@
 // --- PIN DEFINITIONS (COLLAR NODE) ---
 #define ONE_WIRE_BUS 4
 #define DISTANCE_PIN 34
+#define LED_ONBOARD 2
 
 // LoRa SX1278 (Ra-01 433MHz) Pins
 #define LORA_CS 5
@@ -34,6 +35,8 @@ String clientId;
 
 // --- SENSOR & HARDWARE STATUS GLOBALS ---
 bool mpuReady = false;
+bool isMpuDirect = false;
+uint8_t mpuDirectAddr = 0x68;
 bool loraReady = false;
 float smoothedTemp = 38.5; // Baseline bovine temp (°C)
 const float EMA_ALPHA = 0.6;
@@ -60,7 +63,26 @@ void scanI2CDevices() {
   }
 }
 
-// 1. Temperature Filter (EMA) with Disconnect Guard
+// 1. Stabilized 32x Burst Oversampling Distance Filter (eliminates ADC RF jitter)
+int readStableDistance() {
+  long sum = 0;
+  for (int i = 0; i < 32; i++) {
+    sum += analogRead(DISTANCE_PIN);
+    delayMicroseconds(150);
+  }
+  int avg = sum / 32;
+  int dist = map(avg, 0, 4095, 0, 1000);
+  dist = constrain(dist, 0, 1000);
+
+  static int lastStable = 0;
+  // ±10m deadband filter: ignores small noise ripples
+  if (abs(dist - lastStable) > 10 || lastStable == 0) {
+    lastStable = dist;
+  }
+  return lastStable;
+}
+
+// 2. Temperature Filter (EMA) with Disconnect Guard
 float readFilteredTemperature() {
   sensors.requestTemperatures();
   float rawTemp = sensors.getTempCByIndex(0);
@@ -129,7 +151,7 @@ void setup_wifi() {
   WiFi.begin(ssid, password);
 
   unsigned long startAttempt = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 15000) {
+  while (WiFi.status() != WL_CONNECTED && millis() - startAttempt < 4000) {
     delay(500);
     Serial.print(".");
   }
@@ -177,30 +199,59 @@ void setup() {
   // Unique MQTT client ID to prevent broker collisions
   clientId = "Node_TX_" + String((uint32_t)ESP.getEfuseMac(), HEX);
 
-  // Initialize I2C Bus on GPIO 21 (SDA) and GPIO 22 (SCL)
+  // Initialize I2C Bus on GPIO 21 (SDA) and GPIO 22 (SCL) with timeout
   Wire.begin(21, 22);
-  scanI2CDevices();
+  Wire.setTimeOut(50);
+  Serial.println("[INIT] I2C bus initialized on SDA=21, SCL=22");
 
   // Initialize Temperature Sensor (DS18B20 on GPIO 4)
   sensors.begin();
   Serial.println("[INIT] DS18B20 Temperature bus started on GPIO 4");
 
-  // Initialize IMU (MPU6050/MPU6500) - Try 0x68, then 0x69
-  if (mpu.begin(0x68, &Wire)) {
-    Serial.println("[INIT OK] MPU6050/6500 initialized at 0x68.");
-    mpuReady = true;
-  } else if (mpu.begin(0x69, &Wire)) {
-    Serial.println("[INIT OK] MPU6050/6500 initialized at 0x69.");
-    mpuReady = true;
-  } else {
+  // Initialize IMU via robust Direct Register Driver (supports MPU6050, MPU6500, MPU9250)
+  Wire.setClock(50000);
+  uint8_t testAddrs[] = {0x68, 0x69};
+  for (int a = 0; a < 2; a++) {
+    uint8_t addr = testAddrs[a];
+    Wire.beginTransmission(addr);
+    byte err = Wire.endTransmission(true);
+    if (err == 0) {
+      // Device acknowledged address, now read WHO_AM_I register (0x75)
+      Wire.beginTransmission(addr);
+      Wire.write(0x75);
+      if (Wire.endTransmission(true) == 0 && Wire.requestFrom((uint8_t)addr, (uint8_t)1) == 1) {
+        uint8_t who = Wire.read();
+        Serial.printf("[INIT OK] Detected MPU chip at 0x%02X (WHO_AM_I=0x%02X)\n", addr, who);
+        // Wake up chip (clear SLEEP bit in PWR_MGMT_1 reg 0x6B)
+        Wire.beginTransmission(addr);
+        Wire.write(0x6B);
+        Wire.write(0x00);
+        Wire.endTransmission(true);
+        // Set range +/- 8g in ACCEL_CONFIG reg 0x1C
+        Wire.beginTransmission(addr);
+        Wire.write(0x1C);
+        Wire.write(0x10);
+        Wire.endTransmission(true);
+        mpuReady = true;
+        isMpuDirect = true;
+        mpuDirectAddr = addr;
+        Serial.println("[INIT OK] Universal MPU-9250/6500/6050 driver activated!");
+        break;
+      }
+    }
+  }
+  if (!mpuReady) {
     Serial.println(
         "[INIT WARN] MPU not detected. Continuing with 0.0 m/s^2 baseline.");
-    mpuReady = false;
   }
 
   // Potentiometer on GPIO 34
   pinMode(DISTANCE_PIN, INPUT);
   Serial.println("[INIT] Geofence Potentiometer on GPIO 34 (ADC1)");
+
+  // Onboard Activity LED
+  pinMode(LED_ONBOARD, OUTPUT);
+  digitalWrite(LED_ONBOARD, HIGH);
 
   // Initialize 433 MHz LoRa Radio (Ra-01 / SX1278)
   pinMode(LORA_CS, OUTPUT);
@@ -262,15 +313,28 @@ void loop() {
 
   // 1. Read Sensors
   float temp = readFilteredTemperature();
-  int rawValue = analogRead(DISTANCE_PIN);
-  int distance = map(rawValue, 0, 4095, 0, 1000);
+  int distance = readStableDistance();
 
   float dynamicAccel = 0.0;
   if (mpuReady) {
-    sensors_event_t a, g, temp_event;
-    mpu.getEvent(&a, &g, &temp_event);
-    dynamicAccel = calculateDynamicAcceleration(
-        a.acceleration.x, a.acceleration.y, a.acceleration.z);
+    if (isMpuDirect) {
+      Wire.beginTransmission(mpuDirectAddr);
+      Wire.write(0x3B);
+      if (Wire.endTransmission(true) == 0 && Wire.requestFrom((uint8_t)mpuDirectAddr, (uint8_t)6) == 6) {
+        int16_t rx = (Wire.read() << 8) | Wire.read();
+        int16_t ry = (Wire.read() << 8) | Wire.read();
+        int16_t rz = (Wire.read() << 8) | Wire.read();
+        float ax = (rx / 4096.0f) * 9.806f;
+        float ay = (ry / 4096.0f) * 9.806f;
+        float az = (rz / 4096.0f) * 9.806f;
+        dynamicAccel = calculateDynamicAcceleration(ax, ay, az);
+      }
+    } else {
+      sensors_event_t a, g, temp_event;
+      mpu.getEvent(&a, &g, &temp_event);
+      dynamicAccel = calculateDynamicAcceleration(
+          a.acceleration.x, a.acceleration.y, a.acceleration.z);
+    }
   }
 
   // 2. Evaluate Anomaly Logic
@@ -293,9 +357,11 @@ void loop() {
 
   // 4A. Broadcast over 433 MHz LoRa (if module is attached)
   if (loraReady) {
+    digitalWrite(LED_ONBOARD, HIGH);
     LoRa.beginPacket();
     LoRa.print(payload);
     LoRa.endPacket();
+    digitalWrite(LED_ONBOARD, LOW);
     Serial.println("[LORA TX 433MHz] " + payload);
   }
 

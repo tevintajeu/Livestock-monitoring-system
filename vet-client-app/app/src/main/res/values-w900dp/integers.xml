@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 3 columns for 10+ inch tablets in landscape mode -->
+    <integer name="grid_columns">3</integer>
+</resources>

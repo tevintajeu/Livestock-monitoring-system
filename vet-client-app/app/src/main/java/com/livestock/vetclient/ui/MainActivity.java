@@ -21,6 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.PopupMenu;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
@@ -54,7 +55,7 @@ import java.util.Map;
 public class MainActivity extends AppCompatActivity implements LivestockNodeAdapter.OnNodeClickListener {
 
     public static final String EXTRA_NODE_ID = "extra_node_id";
-    public static final String DEFAULT_GATEWAY_ENDPOINT = "http://127.0.0.1:8080/data";
+    public static final String DEFAULT_GATEWAY_ENDPOINT = "http://192.168.4.1:8080/data";
     private static final String PREF_NAME = "vet_client_prefs";
     private static final String PREF_KEY_GATEWAY_URL = "pref_gateway_url";
 
@@ -172,8 +173,22 @@ public class MainActivity extends AppCompatActivity implements LivestockNodeAdap
 
     private void setupRecyclerView() {
         nodeAdapter = new LivestockNodeAdapter(this);
-        recyclerViewNodes.setLayoutManager(new LinearLayoutManager(this));
+        int spanCount = getResources().getInteger(R.integer.grid_columns);
+        recyclerViewNodes.setLayoutManager(new GridLayoutManager(this, spanCount));
         recyclerViewNodes.setAdapter(nodeAdapter);
+    }
+
+    @Override
+    public void onConfigurationChanged(android.content.res.Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        if (recyclerViewNodes != null) {
+            int spanCount = getResources().getInteger(R.integer.grid_columns);
+            if (recyclerViewNodes.getLayoutManager() instanceof GridLayoutManager) {
+                ((GridLayoutManager) recyclerViewNodes.getLayoutManager()).setSpanCount(spanCount);
+            } else {
+                recyclerViewNodes.setLayoutManager(new GridLayoutManager(this, spanCount));
+            }
+        }
     }
 
     private void setupListeners() {

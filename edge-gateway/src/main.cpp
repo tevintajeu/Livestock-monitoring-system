@@ -15,8 +15,15 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, -1);
 // Hardware Pinout per Prototype Specification
 #define LED_RED 25
 #define LED_AMBER 27
+#define LED_ONBOARD 2
 #define ACK_BUTTON 32
+
+// Dedicated Hardware SPI Bus for MicroSD (HSPI - completely independent of LoRa)
 #define SD_CS 15
+#define SD_SCK 16
+#define SD_MOSI 17
+#define SD_MISO 4
+SPIClass sdSPI(HSPI);
 
 // LoRa SX1278 (Ra-01 433MHz) Pins
 #define LORA_CS 5
@@ -59,13 +66,8 @@ void updateAlertLeds() {
 
   if (activeAlertPattern == 0 || alertAcknowledged) {
     digitalWrite(LED_RED, LOW);
-    // Heartbeat: 100ms pulse every 2s on Amber to confirm system is alive & verify LED
-    if (now - lastHeartbeat >= 2000) {
-      lastHeartbeat = now;
-      digitalWrite(LED_AMBER, HIGH);
-      delay(100);
-      digitalWrite(LED_AMBER, LOW);
-    }
+    digitalWrite(LED_AMBER, HIGH);   // Solid Amber = System Normal / Telemetry Active
+    digitalWrite(LED_ONBOARD, HIGH); // Solid Onboard Blue = Gateway Active & Powered
     return;
   }
 
@@ -200,7 +202,11 @@ void setup() {
 
   pinMode(LED_RED, OUTPUT);
   pinMode(LED_AMBER, OUTPUT);
+  pinMode(LED_ONBOARD, OUTPUT);
   pinMode(ACK_BUTTON, INPUT_PULLUP);
+
+  // Turn ON Onboard LED (GPIO 2) immediately to prove ESP32 is powered and running
+  digitalWrite(LED_ONBOARD, HIGH);
 
   // --- 3.5-SECOND HARDWARE LED TEST ON BOOT ---
   Serial.println("[LED TEST] Turning ON Red (GPIO 25) & Amber (GPIO 27) for 3.5 seconds...");
@@ -208,33 +214,68 @@ void setup() {
   digitalWrite(LED_AMBER, HIGH);
   delay(3500);
   digitalWrite(LED_RED, LOW);
-  digitalWrite(LED_AMBER, LOW);
-  Serial.println("[LED TEST] Boot LED test finished.");
+  digitalWrite(LED_AMBER, HIGH); // Keep Amber ON to indicate Gateway Ready
+  Serial.println("[LED TEST] Boot LED test finished (Amber set to ON).");
 
-  // Initialize I2C OLED on GPIO 21 (SDA) / GPIO 22 (SCL)
-  Wire.begin(21, 22);
-  if (display.begin(SSD1306_SWITCHCAPVCC, 0x3C)) {
-    oledReady = true;
-    display.clearDisplay();
-    display.setCursor(0, 0);
-    display.setTextSize(1);
-    display.setTextColor(SSD1306_WHITE);
-    display.println("=== LIVESTOCK GATEWAY ===");
-    display.println("System Ready.");
-    display.println("AP: ESP32_LIVESTOCK_AP");
-    display.println("Waiting for packets...");
-    display.display();
-    Serial.println("[INIT OK] SSD1306 OLED initialized on I2C 0x3C.");
+  // Check I2C Physical Pin States before attaching Wire
+  uint8_t oledAddr = 0;
+  pinMode(21, INPUT_PULLUP);
+  pinMode(22, INPUT_PULLUP);
+  delay(10);
+  int sdaLevel = digitalRead(21);
+  int sclLevel = digitalRead(22);
+  Serial.printf("[I2C PIN CHECK] SDA (GPIO 21) = %s, SCL (GPIO 22) = %s\n", 
+                sdaLevel ? "HIGH (OK)" : "LOW (STUCK/SHORTED TO GND!)", 
+                sclLevel ? "HIGH (OK)" : "LOW (STUCK/SHORTED TO GND!)");
+
+  if (sdaLevel == LOW || sclLevel == LOW) {
+    Serial.println("[I2C FATAL] I2C bus line is held LOW! Cannot start I2C Wire.");
+    Serial.println("  -> Disconnect OLED SDA & SCL wires to check for shorts.");
   } else {
-    Serial.println("[INIT WARN] SSD1306 OLED not found on I2C (0x3C).");
+    // Initialize I2C Bus on GPIO 21 (SDA) / GPIO 22 (SCL)
+    Wire.begin(21, 22);
+    Wire.setTimeOut(20);
+    Serial.println("[I2C SCAN] Probing OLED at 0x3C and 0x3D...");
+    Wire.beginTransmission(0x3C);
+    if (Wire.endTransmission(true) == 0) {
+      oledAddr = 0x3C;
+    } else {
+      Wire.beginTransmission(0x3D);
+      if (Wire.endTransmission(true) == 0) {
+        oledAddr = 0x3D;
+      }
+    }
   }
 
-  // Initialize Shared SPI Bus Control Pins (Deselect both slaves before initializing)
-  pinMode(LORA_CS, OUTPUT);
-  digitalWrite(LORA_CS, HIGH);
+  if (oledAddr != 0) {
+    Serial.printf("[INIT OK] SSD1306 OLED found at 0x%02X. Initializing...\n", oledAddr);
+    if (display.begin(SSD1306_SWITCHCAPVCC, oledAddr)) {
+      oledReady = true;
+      display.clearDisplay();
+      display.setTextColor(SSD1306_WHITE);
+      display.setTextSize(1);
+      display.setCursor(0, 0);
+      display.println("=== LIVESTOCK GATEWAY ===");
+      display.println("System Ready.");
+      display.println("AP: ESP32_LIVESTOCK_AP");
+      display.println("Waiting for packets...");
+      display.display();
+      Serial.println("[INIT OK] OLED display buffer written.");
+    }
+  } else {
+    Serial.println("[INIT WARN] No SSD1306 OLED detected at 0x3C or 0x3D! Check VCC/GND/SDA/SCL wiring.");
+  }
+
+  // Initialize Dedicated HSPI Bus for MicroSD Card (Zero Interference with LoRa)
   pinMode(SD_CS, OUTPUT);
   digitalWrite(SD_CS, HIGH);
-  SPI.begin(18, 19, 23); // SCK=18, MISO=19, MOSI=23
+  pinMode(SD_MISO, INPUT_PULLUP);
+  sdSPI.begin(SD_SCK, SD_MISO, SD_MOSI, SD_CS);
+
+  // Initialize Dedicated VSPI Bus for LoRa SX1278
+  pinMode(LORA_CS, OUTPUT);
+  digitalWrite(LORA_CS, HIGH);
+  SPI.begin(18, 19, 23); // LoRa VSPI: SCK=18, MISO=19, MOSI=23
 
   // Hardware Pulse on LoRa RST pin (GPIO 14) to wake up SX1278
   pinMode(LORA_RST, OUTPUT);
@@ -266,17 +307,18 @@ void setup() {
   // Initialize LoRa 433 MHz Receiver
   LoRa.setPins(LORA_CS, LORA_RST, LORA_DIO0);
   LoRa.setSPI(SPI);
-  if (LoRa.begin(433E6)) {
+  delay(50);
+  if (LoRa.begin(433E6) || (delay(100), LoRa.begin(433E6))) {
     loraReady = true;
     Serial.println("[INIT OK] Ra-01 LoRa Receiver started on 433 MHz.");
   } else {
     Serial.println("[INIT WARN] Ra-01 LoRa not detected. (Check CS=5, RST=14, DIO0=26, 3.3V).");
   }
 
-  // Initialize MicroSD Card on GPIO 15
-  if (SD.begin(SD_CS)) {
+  // Initialize MicroSD Card on Dedicated HSPI Bus with breadboard-safe 4 MHz clock (fallback to 1 MHz)
+  if (SD.begin(SD_CS, sdSPI, 4000000) || SD.begin(SD_CS, sdSPI, 1000000)) {
     sdReady = true;
-    Serial.println("[INIT OK] MicroSD Card mounted on GPIO 15.");
+    Serial.println("[INIT OK] MicroSD Card mounted on dedicated HSPI (CS=15, SCK=16, MOSI=17, MISO=4).");
     if (!SD.exists("/telemetry.csv")) {
       File f = SD.open("/telemetry.csv", FILE_WRITE);
       if (f) {
@@ -285,7 +327,7 @@ void setup() {
       }
     }
   } else {
-    Serial.println("[INIT WARN] MicroSD Card failed to mount on GPIO 15.");
+    Serial.println("[INIT WARN] MicroSD Card failed to mount on dedicated HSPI.");
   }
 
   // Configure Wi-Fi in dual mode: SoftAP (for Phone) + STA (for Home/Bench Wi-Fi)

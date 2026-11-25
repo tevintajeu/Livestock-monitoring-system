@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 2 columns for 7-8 inch tablets or portrait 10 inch tablets -->
+    <integer name="grid_columns">2</integer>
+</resources>

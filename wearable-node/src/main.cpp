@@ -24,8 +24,14 @@ Adafruit_MPU6050 mpu;
 Preferences flashStorage;
 
 // --- Wi-Fi & MQTT Configuration ---
-const char *ssid = "Kiten-sdu n";
-const char *password = "ARunke@123";
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#include "secrets.h.example"
+#endif
+
+const char *ssid = WIFI_SSID;
+const char *password = WIFI_PASSWORD;
 const char *mqtt_server = "broker.hivemq.com";
 const char *mqtt_topic = "capstone/livestock/telemetry";
 

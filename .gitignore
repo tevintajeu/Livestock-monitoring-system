@@ -15,4 +15,6 @@ __pycache__/
 start_usb_bridge.bat
 component-bench-tests/
 hardware-tests/
+secrets.h
+**/secrets.h
 

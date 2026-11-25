@@ -37,27 +37,27 @@ The system bridges low-power wearable livestock telemetry, edge gateway alert pr
 ```mermaid
 flowchart LR
     subgraph Pasture["Pasture Zone (Off-Grid)"]
-        node["Wearable Collar Node\n(ESP32 + DS18B20 + MPU6050)\n• Dynamic Accel Filter\n• Temp EMA Filter\n• Flash NVS Fallback Buffer"]
+        node["Wearable Collar Node\n(ESP32 + DS18B20 + MPU-9250 + Ra-01 LoRa)\n• Dynamic Accel Filter\n• Temp EMA Filter\n• Flash NVS Fallback Buffer"]
     end
 
     subgraph Boma["Central Boma Enclosure"]
-        gateway["Boma Edge Gateway\n(ESP32 + MicroSD + SSD1306 OLED)\n• Non-blocking Alert LEDs\n• Local CSV Logging\n• Tactile Silence Button"]
+        gateway["Boma Edge Gateway\n(ESP32 + Dual SPI LoRa/SD + SSD1306 OLED)\n• Non-blocking Alert LEDs (GPIO 25/27)\n• SoftAP HTTP Server (:8080/data)\n• Tactile ACK Button (GPIO 32)"]
     end
 
     subgraph Bridge["Sync / Local Bridge"]
-        broker["MQTT Broker\n(HiveMQ / SoftAP)\ncapstone/livestock/telemetry"]
+        broker["MQTT Broker\n(HiveMQ — Dev/Wokwi)\ncapstone/livestock/telemetry"]
         pyBridge["Bridge Server\n(mock_esp32_server.py)\nHTTP GET /data (Port 8080)"]
     end
 
-    subgraph Mobile["Field Handheld"]
-        app["MifugoSafe Android App\n(SDK 34 • Room SQLite v3)\n• Role-Based PIN Access\n• Human-Centered Triage\n• Milk & Health Tracker"]
+    subgraph Mobile["Field Handheld / Samsung Tablet"]
+        app["MifugoSafe Android App\n(SDK 34 • Room SQLite v3 • sw600dp/w900dp)\n• Salted SHA-256 PIN & RBAC\n• Human-Centered Triage\n• Milk & Health Tracker"]
     end
 
-    node -->|"5-Field CSV Frame\n(RF / LoRa / MQTT)"| broker
-    broker --> gateway
-    broker --> pyBridge
-    gateway -->|"Offline SoftAP\nHTTP 192.168.4.1/data"| app
-    pyBridge -->|"USB ADB Reverse\nHTTP 127.0.0.1:8080/data"| app
+    node -->|"5-Field CSV Frame\n(433 MHz LoRa / MQTT)"| gateway
+    node -.->|"Dev / Wokwi MQTT"| broker
+    broker -.-> pyBridge
+    gateway -->|"Offline SoftAP\nHTTP 192.168.4.1:8080/data"| app
+    pyBridge -.->|"USB ADB Reverse\nHTTP 127.0.0.1:8080/data"| app
 ```
 
 ### Complete End-to-End Workflow:
@@ -73,23 +73,24 @@ flowchart LR
 ### A. Wearable Collar Node (`wearable-node/`)
 Engineered with ESP32-based low-power firmware located in [`wearable-node/src/main.cpp`](wearable-node/src/main.cpp).
 
-* **Thermal Sensing & EMA Filtering:** Utilizes a Maxim DS18B20 digital 1-Wire temperature sensor. Incorporates an Exponential Moving Average (EMA, $\alpha = 0.6$) filter to eliminate ambient thermal spikes and CRC disconnection artifacts (`-127°C` / `+85°C`).
-* **Gravity-Compensated Dynamic Acceleration:** Reads an MPU-6050 6-DOF IMU over I2C. Computes dynamic vector acceleration:
+* **Thermal Sensing & EMA Filtering:** Utilizes a Maxim DS18B20 digital 1-Wire temperature sensor (`GPIO 4`, 4.7 kΩ pull-up). Incorporates an Exponential Moving Average (EMA, $\alpha = 0.6$) filter to eliminate ambient thermal spikes and CRC disconnection artifacts (`-127°C` / `+85°C`).
+* **Gravity-Compensated Dynamic Acceleration:** Reads an **MPU-9250 / MPU-6500** IMU over I2C (`SDA=21, SCL=22`) via a custom bare-metal register driver (`0x3B–0x40`). Computes dynamic vector acceleration:
   $$\text{Dynamic Accel} = \left|\sqrt{a_x^2 + a_y^2 + a_z^2} - 9.81\right| \text{ m/s}^2$$
   This prevents false distress alerts caused by standard grazing posture or neck-tilting.
-* **Geofence Proximity Sensing:** An analog voltage divider simulates radio frequency / RSSI distance mapping from `0` to `1000` meters from the central Boma anchor.
-* **NVS Flash Memory Fallback:** If the network link drops, up to 20 emergency telemetry packets are preserved in non-volatile flash memory (`Preferences`). When the link is restored, backlogged packets stream automatically to prevent data loss.
+* **Geofence Proximity Sensing:** A 10 kΩ potentiometer on `GPIO 34` (ADC1) with 32x burst oversampling and ±10 m deadband simulates radial geofence distance from `0` to `1000` meters from the central Boma anchor.
+* **433 MHz LoRa Transceiver & NVS Flash Fallback:** Broadcasts 5-field CSV telemetry frames over an Ai-Thinker Ra-01 (SX1278, `433 MHz`, `+17 dBm`, VSPI `SCK=18, MISO=19, MOSI=23, CS=5, RST=14, DIO0=26`). If the link drops, up to 20 emergency alert packets are buffered in non-volatile flash memory (`Preferences`).
 
 ### B. Boma Edge Gateway (`edge-gateway/`)
 Firmware located in [`edge-gateway/src/main.cpp`](edge-gateway/src/main.cpp).
 
-* **MicroSD File Logger:** Automatically mounts an SPI MicroSD card and appends synchronized CSV records to `/livestock.csv`.
+* **Dual Hardware SPI Isolation:** Isolates the Ra-01 LoRa 433 MHz receiver on **VSPI** (`CS=5, SCK=18, MISO=19, MOSI=23, RST=14, DIO0=26`) and routes the MicroSD adapter to a dedicated **HSPI** bus (`CS=15, SCK=16, MOSI=17, MISO=4` with `INPUT_PULLUP`) to eliminate 74LVC125 MISO tri-state bus contention. If the MicroSD card is absent or fails to mount, the gateway operates cleanly without halting while long-term archiving is persisted in the tablet client's Room SQLite database.
+* **Offline Wi-Fi SoftAP & HTTP REST Server:** Broadcasts `ESP32_LIVESTOCK_AP` (`192.168.4.1`) and serves live CSV telemetry at `http://192.168.4.1:8080/data` for zero-internet mobile/tablet synchronization.
 * **Non-Blocking Pattern-Encoded Alert Matrix:**
-  * **Health / Fever / Calving Drop (Flag 1):** Steady `800ms` pulse on Amber LED.
-  * **Geofence Perimeter Breach (>500m, Flag 2):** Medium `400ms` blink on Red LED.
+  * **Health / Fever / Calving Drop (Flag 1):** Steady `800ms` pulse on Amber LED (`GPIO 27`).
+  * **Geofence Perimeter Breach (>500m, Flag 2):** Medium `400ms` blink on Red LED (`GPIO 25`).
   * **Predator Harassment / Theft Spike (Flag 3):** Rapid alternating `150ms` strobe on Red & Amber LEDs.
-* **Alert Fatigue Acknowledgment Button:** Hardware tactile switch on GPIO 27 allows herders to silence visual alerts after attending to an animal, dumping current SD logs to the serial console without rebooting.
-* **Local Visual OLED:** 0.96-inch SSD1306 (128×64) I2C display displays real-time triage summaries at the Boma enclosure.
+* **Alert Fatigue Acknowledgment Button & Watchdog:** Hardware tactile switch on **`GPIO 32`** (falling-edge debounced) silences active visual alerts after attending to an animal. A 7-second telemetry staleness watchdog automatically clears stale OLED/RAM readings if the collar node disconnects.
+* **Local Visual OLED:** 0.96-inch SSD1306 (128×64) I2C display (`0x3C`, `SDA=21, SCL=22`) renders real-time triage summaries at the Boma enclosure.
 
 ---
 
@@ -115,7 +116,8 @@ The Android application is written in Java (Android SDK 34, Material 3, Room SQL
    • Daily milk yield logging                • Gateway IP / endpoint config
 ```
 
-* **Offline SHA-256 PIN Security (`AuthManager.java`):** 100% offline local authentication. 4-digit PINs are verified against SHA-256 password hashes stored in `SharedPreferences` and Room SQLite.
+* **Offline Salted SHA-256 PIN Security & Lockout (`AuthManager.java`):** 100% offline local authentication using salted SHA-256 hashes (no plaintext PINs stored) plus a 5-attempt brute-force guard triggering a 30-second keypad lockout.
+* **Responsive Tablet UI (`sw600dp` & `w900dp`):** Verified on a physical **Samsung Galaxy Tab A9+ (`SM_X210`)** with a centered 520dp kiosk login card, 2/3-column adaptive herd card grid, and side-by-side dual-pane clinical cockpit.
 * **Demo Quick Login:** Includes a 1-tap presentation bypass switch for academic defenses and live evaluations.
 
 ---
@@ -234,6 +236,14 @@ NODE_001,39.50,0.80,0.20,9.80,180.0,0,1727169615
 * **Wokwi:** Free account on [wokwi.com](https://wokwi.com).
 
 ---
+
+### Flashing the ESP32 Physical Hardware
+1. In both `wearable-node/include/` and `edge-gateway/include/`, copy `secrets.h.example` to `secrets.h` and enter your local 2.4 GHz Wi-Fi credentials (optional; firmware compiles cleanly using placeholders and operates offline over LoRa + SoftAP without station Wi-Fi).
+2. Flash each board via PlatformIO:
+   ```powershell
+   pio run -d wearable-node -e esp32dev --target upload
+   pio run -d edge-gateway  -e esp32dev --target upload
+   ```
 
 ### Running Wokwi Simulations
 1. Open [`wearable-node/`](wearable-node/) on Wokwi or flash [`wearable-node/src/main.cpp`](wearable-node/src/main.cpp) to an ESP32 board.

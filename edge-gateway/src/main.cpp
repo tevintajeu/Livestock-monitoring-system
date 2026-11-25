@@ -30,8 +30,14 @@ SPIClass sdSPI(HSPI);
 #define LORA_RST 14
 #define LORA_DIO0 26
 
-const char *ssid = "Kiten-sdu n";
-const char *password = "ARunke@123";
+#if __has_include("secrets.h")
+#include "secrets.h"
+#else
+#include "secrets.h.example"
+#endif
+
+const char *ssid = WIFI_SSID;
+const char *password = WIFI_PASSWORD;
 const char *mqtt_server = "broker.hivemq.com";
 const char *mqtt_topic = "capstone/livestock/telemetry";
 
